@@ -1,0 +1,150 @@
+[
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_garamond_regular.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/garamond_regular.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_fraunces_semibold.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/fraunces_semibold.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_storm.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_storm.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_cryobay.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_cryobay.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_vt323.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/vt323.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_alarm.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_alarm.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_podloss.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_podloss.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_fraunces_italic.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/fraunces_italic.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_flare.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_flare.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_ship.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_ship.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_jump.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_jump.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/mipmap-anydpi-v26_ic_launcher.xml.flat",
+        "source": "uk.saul.colonyship.app-main-44:/mipmap-anydpi-v26/ic_launcher.xml"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_barlowc_bold.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/barlowc_bold.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_schism.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_schism.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_legacy.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_legacy.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_intro.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_intro.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable_ic_launcher_fg.xml.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable/ic_launcher_fg.xml"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_ruin.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_ruin.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_fraunces_bold.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/fraunces_bold.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_barlowc_semibold.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/barlowc_semibold.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_barlowc_extrabold.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/barlowc_extrabold.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_select.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_select.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_scan.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_scan.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_barlowsc_regular.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/barlowsc_regular.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_engineering.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_engineering.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_landfall.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_landfall.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_click.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_click.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_planet.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_planet.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_ai_eye.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_ai_eye.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/drawable-nodpi_art_derelict.jpg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/drawable-nodpi/art_derelict.jpg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_impact.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_impact.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_music_ambient.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/music_ambient.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_garamond_italic.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/garamond_italic.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_barlowsc_italic.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/barlowsc_italic.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_barlowsc_medium.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/barlowsc_medium.ttf"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/raw_sfx_settle.ogg.flat",
+        "source": "uk.saul.colonyship.app-main-44:/raw/sfx_settle.ogg"
+    },
+    {
+        "merged": "uk.saul.colonyship.app-debug-42:/font_righteous.ttf.flat",
+        "source": "uk.saul.colonyship.app-main-44:/font/righteous.ttf"
+    }
+]
