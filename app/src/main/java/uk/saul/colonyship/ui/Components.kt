@@ -12,6 +12,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.CornerRadius
@@ -157,8 +159,6 @@ fun ConsoleKey(
     }
 }
 
-fun Modifier.alpha(a: Float) = this.then(Modifier.graphicsLayerAlpha(a))
-private fun Modifier.graphicsLayerAlpha(a: Float) = androidx.compose.ui.graphics.graphicsLayer { alpha = a }
 
 /** Circular AI eye cropped from the painted art. */
 @Composable
