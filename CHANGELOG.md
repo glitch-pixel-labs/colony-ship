@@ -2,9 +2,9 @@
 
 All notable changes to Colony Ship. Versions follow semver.
 
-## [0.2.0] - 2026-11-14 (debug build, unreleased)
+## [0.2.0] - 2026-11-14
 
-This version responds to Saul's feedback on 0.1.0.
+First signed release, for GitHub / Obtainium. This version responds to Saul's feedback on 0.1.0.
 
 ### Added
 - **Prologue:** six painted panels on every New Run, each with original text: why humanity launched, the ship, the 1,000 sleepers, departure and time dilation, the AI's role, and the mission.
@@ -39,7 +39,7 @@ This version responds to Saul's feedback on 0.1.0.
 ### Removed
 - "Jump drive" and "warp" language, and the pixel-style warp animation.
 
-## [0.1.0] - 2026-11-14 (debug build, unreleased)
+## [0.1.0] - 2026-11-14
 
 First playable build for the Samsung Galaxy A54 (Android 14), portrait only.
 
