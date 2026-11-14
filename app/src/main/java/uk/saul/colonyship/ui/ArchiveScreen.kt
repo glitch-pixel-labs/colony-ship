@@ -65,12 +65,12 @@ fun ArchiveScreen(g: GameController, showPrompt: (PromptShown) -> Unit, showImag
                 SectionTitle("··", "CURRENT VOYAGE · RUN ${s.runNumber.toString().padStart(2, '0')}", "DAY ${s.day}")
                 Text("${s.log.size} log entries · ${s.alive()} alive · ${s.log.count { it.imagePath != null }} pictures attached", style = body(12.sp, C.muted))
                 Spacer(Modifier.height(8.dp))
-                ConsoleKey("OPEN THE SHIP'S LOG", Modifier.fillMaxWidth(), KeyStyle.CREAM) { g.openBook = CURRENT }
+                ConsoleKey("OPEN THE SHIP'S LOG", Modifier.fillMaxWidth(), KeyStyle.CREAM) { g.bookPage = 0; g.openBook = CURRENT }
             }
         }
         g.archive.chunked(2).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                row.forEach { r -> BookSpine(r, Modifier.weight(1f).height(118.dp), false) { g.openBook = r.runId } }
+                row.forEach { r -> BookSpine(r, Modifier.weight(1f).height(118.dp), false) { g.bookPage = 0; g.openBook = r.runId } }
                 if (row.size == 1) Spacer(Modifier.weight(1f))
             }
         }
@@ -110,7 +110,7 @@ fun worldKind(p: Planet?): String = when {
 fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (PromptShown) -> Unit, showImage: (String?, Int, String) -> Unit) {
     val ctx = LocalContext.current
     val pages = r.chapters.size + 1 // last page = ship's log
-    var page by remember(r.runId) { mutableIntStateOf(if (r.chapters.isEmpty()) 0 else 0) }
+    val page = g.bookPage.coerceIn(0, pages - 1)
     val play = cue()
     val ch = r.chapters.getOrNull(page)
     val pick = rememberPhotoPicker { uri ->
@@ -136,7 +136,7 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 val labels = r.chapters.map { "${it.yearLabel} · ${it.title.removePrefix("The ").uppercase()}" } + "LOG · ${r.log.size} ENTRIES"
                 labels.forEachIndexed { i, l ->
-                    Column(Modifier.weight(1f).clickable { play(uk.saul.colonyship.audio.Cue.TICK); page = i }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).clickable { play(uk.saul.colonyship.audio.Cue.TICK); g.bookPage = i }, horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(Modifier.size(11.dp).clip(CircleShape).background(if (i == page) C.orange else if (i < page) Color(0xFF7A5A40) else Color.Transparent).border(1.5.dp, Color(0xFF7A5A40), CircleShape))
                         Text(l, style = label(7.5.sp, if (i == page) C.inkRed else Color(0xFF6A4A32), 0.06f), textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.padding(top = 3.dp))
                     }
@@ -147,9 +147,9 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
             else LogPage(g, r, showPrompt, showImage)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (page > 0) Text("← PREVIOUS", style = label(10.sp, C.tealDk), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.TICK); page -= 1 }.padding(6.dp))
+                if (page > 0) Text("← PREVIOUS", style = label(10.sp, C.tealDk), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.TICK); g.bookPage = page - 1 }.padding(6.dp))
                 Spacer(Modifier.weight(1f))
-                if (page < pages - 1) Text("NEXT →", style = label(10.sp, C.tealDk), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.TICK); page += 1 }.padding(6.dp))
+                if (page < pages - 1) Text("NEXT →", style = label(10.sp, C.tealDk), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.TICK); g.bookPage = page + 1 }.padding(6.dp))
             }
             Row(Modifier.fillMaxWidth()) {
                 Spacer(Modifier.weight(1f))
@@ -157,7 +157,7 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
             }
             val shelf = (listOf(r) + g.archive.filter { it.runId != r.runId }).take(3)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                shelf.forEach { b -> BookSpine(b, Modifier.weight(1f).height(70.dp), b.runId == r.runId) { if (b.runId != r.runId) g.openBook = b.runId } }
+                shelf.forEach { b -> BookSpine(b, Modifier.weight(1f).height(70.dp), b.runId == r.runId) { if (b.runId != r.runId) { g.bookPage = 0; g.openBook = b.runId } } }
                 repeat(3 - shelf.size) { Spacer(Modifier.weight(1f)) }
             }
             Spacer(Modifier.height(12.dp))

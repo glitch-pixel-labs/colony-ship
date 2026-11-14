@@ -121,7 +121,7 @@ private fun EventHero(ev: EventDef, s: GameState, entry: LogEntry, pending: Bool
                 Text("FWD OBSERVATION · ${"%02d:%02d".format(hh, mm)} SHIP TIME", style = vfd(11.sp))
                 Spacer(Modifier.weight(1f)); Lamp(Color(0xFFFF3B1F), 6.dp); Spacer(Modifier.width(4.dp)); Text("REC", style = label(9.sp, Color(0xFFFF9A7A)))
             }
-            if (ev.art in setOf("storm", "derelict", "flare")) TargetBoxes(ev.id.hashCode())
+            if (ev.art in setOf("storm", "derelict", "flare")) TargetBoxes(ev.id.hashCode(), ev.art)
             Row(Modifier.align(Alignment.BottomCenter).padding(8.dp).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 Meter(ev.metricLabel, ev.metric(s), Modifier.weight(1f), C.bad, Color(0xB3FF5032))
                 Meter("SHIELDS", "${s.h(Sys.SHIELD).roundToInt()}%", Modifier.weight(1f), if (s.h(Sys.SHIELD) < 70) C.warn else C.glow, Color(0x99FFBE3C))
@@ -133,7 +133,16 @@ private fun EventHero(ev: EventDef, s: GameState, entry: LogEntry, pending: Bool
 }
 
 @Composable
-private fun BoxScope.TargetBoxes(seed: Int) {
+private fun BoxScope.TargetBoxes(seed: Int, art: String = "storm") {
+    val tags = when (art) {
+        "storm" -> listOf("IMPACT · RING SEC ${2 + (seed and 0xF) % 6}", "BREACH · FWD HULL")
+        "flare" -> listOf("FLARE FRONT", "SHIELD LOAD 140%")
+        "derelict" -> listOf("ORIGIN · UNKNOWN", "ENERGY TRACE")
+        "cryobay" -> listOf("POD BANK 7", "THERMAL DRIFT")
+        "engineering" -> listOf("CORE TEMP", "COOLANT LOOP")
+        "planet", "giant" -> listOf("GRAVITY WELL", "TRACKING")
+        else -> listOf("TRACKING", "ANOMALY")
+    }
     val r = kotlin.random.Random(seed)
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val w = maxWidth; val h = maxHeight
@@ -141,7 +150,7 @@ private fun BoxScope.TargetBoxes(seed: Int) {
             val x = 0.2f + r.nextFloat() * 0.5f; val y = 0.25f + i * 0.25f + r.nextFloat() * 0.1f
             Box(Modifier.offset(w * x, h * y).size(46.dp, 42.dp).border(1.5.dp, Color(0xE6FF5A32)))
             Box(Modifier.offset(w * x, h * y + 44.dp).background(Color(0xCC140A06), RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 1.dp)) {
-                Text(if (i == 0) "IMPACT · RING SEC ${2 + r.nextInt(6)}" else "CONTACT · FWD HULL", style = label(8.sp, Color(0xFFFFB27A), 0.1f))
+                Text(tags[i], style = label(8.sp, Color(0xFFFFB27A), 0.1f))
             }
         }
     }

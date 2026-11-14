@@ -1,5 +1,7 @@
 package uk.saul.colonyship.ui
 
+import androidx.compose.ui.graphics.asImageBitmap
+
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -44,12 +46,17 @@ fun quote(size: TextUnit = 14.sp) = TextStyle(fontFamily = F.fraunces, fontStyle
 /** Shared grain texture, generated once. */
 object Grain {
     val bitmap: ImageBitmap by lazy {
-        val w = 160; val bmp = ImageBitmap(w, w); val canvas = Canvas(bmp); val p = Paint(); val r = Random(7)
-        repeat(4200) {
-            p.color = if (r.nextBoolean()) Color.Black.copy(alpha = r.nextFloat() * 0.35f) else Color.White.copy(alpha = r.nextFloat() * 0.08f)
-            canvas.drawRect(r.nextInt(w).toFloat(), r.nextInt(w).toFloat(), r.nextInt(w).toFloat() + 1f, r.nextInt(w).toFloat() + 1f, p)
+        // Fine per-pixel film grain: mostly transparent, a few dark and light specks.
+        val w = 192; val r = Random(7); val px = IntArray(w * w)
+        for (i in px.indices) {
+            val v = r.nextFloat()
+            px[i] = when {
+                v < 0.22f -> android.graphics.Color.argb((r.nextFloat() * 46).toInt(), 0, 0, 0)
+                v > 0.93f -> android.graphics.Color.argb((r.nextFloat() * 18).toInt(), 255, 240, 220)
+                else -> 0
+            }
         }
-        bmp
+        android.graphics.Bitmap.createBitmap(px, w, w, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
     }
     val brush: ShaderBrush by lazy { ShaderBrush(ImageShader(bitmap, TileMode.Repeated, TileMode.Repeated)) }
 }

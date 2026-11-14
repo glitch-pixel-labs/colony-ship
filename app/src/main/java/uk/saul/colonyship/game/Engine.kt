@@ -76,7 +76,7 @@ class Fx(val s: GameState, val r: Random) {
         val idx = s.pods.indices.filter { s.pods[it] == 'S' }.shuffled(r).take(n)
         if (idx.isEmpty()) return
         val c = s.pods.toCharArray(); idx.forEach { c[it] = 'F' }; s.pods = String(c)
-        deltas += "${idx.size} PODS FAILING"
+        deltas += "${idx.size} ${if (idx.size == 1) "POD" else "PODS"} FAILING"
     }
     /** Lose pods: failing ones first, then stable. */
     fun killPods(n: Int) {
@@ -84,12 +84,12 @@ class Fx(val s: GameState, val r: Random) {
         val c = s.pods.toCharArray()
         val order = c.indices.filter { c[it] == 'F' }.shuffled(r) + c.indices.filter { c[it] == 'S' }.shuffled(r)
         val take = order.take(n); take.forEach { c[it] = 'L' }; s.pods = String(c)
-        if (take.isNotEmpty()) { deltas += "−${take.size} PODS"; s.lostToday += take.size }
+        if (take.isNotEmpty()) { deltas += "−${take.size} ${if (take.size == 1) "POD" else "PODS"}"; s.lostToday += take.size }
     }
     fun savePods(n: Int) {
         val c = s.pods.toCharArray()
         val take = c.indices.filter { c[it] == 'F' }.shuffled(r).take(n); take.forEach { c[it] = 'S' }; s.pods = String(c)
-        if (take.isNotEmpty()) deltas += "${take.size} PODS STABILISED"
+        if (take.isNotEmpty()) deltas += "${take.size} ${if (take.size == 1) "POD" else "PODS"} STABILISED"
     }
 }
 

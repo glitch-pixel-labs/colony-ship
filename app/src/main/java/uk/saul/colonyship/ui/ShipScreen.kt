@@ -102,7 +102,7 @@ private fun VoyagePanel(g: GameController, s: GameState) {
             Phase.CRUISE, Phase.ORBIT -> {
                 val days = Engine.travelDays(s)
                 ConsoleKey("ENGAGE JUMP DRIVE", Modifier.fillMaxWidth(), KeyStyle.ORANGE, height = 46.dp, textSize = 16,
-                    sub = "−${Engine.JUMP_COST.roundToInt()} POWER · NEXT STAR ${"%.1f".format(s.nextStarLy)} LY · ~$days DAYS", cueType = Cue.SELECT) { g.jump() }
+                    sub = "−${Engine.JUMP_COST.roundToInt()} POWER · NEXT STAR ${"%.1f".format(s.nextStarLy)} LY · ABOUT $days DAYS", cueType = Cue.SELECT) { g.jump() }
                 if (s.phase == Phase.ORBIT) Text("You are in orbit of ${s.planet?.name}. Jumping means leaving it behind.", style = body(11.sp, C.muted), modifier = Modifier.padding(top = 6.dp))
             }
             Phase.EVENT -> ConsoleKey("INCIDENT PENDING · OPEN EVENTS", Modifier.fillMaxWidth(), KeyStyle.ON, height = 44.dp) { g.tab = Tab.EVENTS }

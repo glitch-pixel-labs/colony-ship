@@ -20,6 +20,7 @@ class GameController(private val store: Store, val cues: Cues) {
     var screen by mutableStateOf(Screen.INTRO)
     var tab by mutableStateOf(Tab.SHIP)
     var openBook by mutableStateOf<String?>(null)
+    var bookPage by mutableStateOf(0)
     var jumping by mutableStateOf(false)
     var settingsFrom by mutableStateOf(Screen.INTRO)
     var musicVolume by mutableStateOf(store.musicVolume)
@@ -112,6 +113,7 @@ class GameController(private val store: Store, val cues: Cues) {
         store.saveArchive(archive)
         store.saveCurrent(null)
         openBook = rec.runId
+        bookPage = 0
         tab = Tab.ARCHIVE
     }
 
@@ -134,6 +136,10 @@ class GameController(private val store: Store, val cues: Cues) {
         cues.play(Cue.SELECT)
         return true
     }
+
+    /** Test/debug hook: replace the live state without cues. */
+    fun debugSet(s: GameState?) { state = s }
+    fun debugSetArchive(list: List<RunRecord>) { archive = list }
 
     fun deleteRecord(runId: String) { archive = archive.filter { it.runId != runId }; store.saveArchive(archive); if (openBook == runId) openBook = null }
 }

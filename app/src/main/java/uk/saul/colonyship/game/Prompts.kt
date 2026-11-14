@@ -11,7 +11,7 @@ object Prompts {
         return buildList {
             add(when { hull > 75 -> "a long ribbed colony ship with a rotating habitat ring, hull in good order"; hull > 45 -> "a weathered ribbed colony ship with a rotating habitat ring, scorched and patched plating"; else -> "a battered, half-ruined colony ship with a rotating habitat ring, gaping hull scars and trailing debris" })
             if (shield < 40) add("a flickering, failing teal shield bubble")
-            if (s.awake.isNotEmpty()) add("tiny lit windows where ${s.awake.size} crew are awake")
+            if (s.awake.isNotEmpty()) add("tiny lit windows where ${if (s.awake.size == 1) "one crew member is" else "${s.awake.size} crew are"} awake")
         }.joinToString(", ")
     }
 
