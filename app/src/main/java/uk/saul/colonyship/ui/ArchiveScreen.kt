@@ -4,7 +4,6 @@ import android.widget.Toast
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -79,12 +78,11 @@ fun ArchiveScreen(g: GameController, showPrompt: (PromptShown) -> Unit, showImag
 
 @Composable
 fun BookSpine(r: RunRecord, modifier: Modifier, current: Boolean, onClick: () -> Unit) {
-    val play = cue()
     val col = SPINES[(r.runNumber + 1) % 3]
     val shape = RoundedCornerShape(topStart = 3.dp, bottomStart = 3.dp, topEnd = 7.dp, bottomEnd = 7.dp)
     Box(modifier.shadow(6.dp, shape).clip(shape).background(Brush.verticalGradient(col)).grain(0.8f)
         .then(if (current) Modifier.border(2.dp, C.nix, shape) else Modifier)
-        .clickable { play(uk.saul.colonyship.audio.Cue.BUTTON); onClick() }
+        .hapticClick { onClick() }
         .drawBehind {
             drawLine(Color(0x66FFE6B0), Offset(6.dp.toPx(), 0f), Offset(6.dp.toPx(), size.height), 1.5f)
             drawLine(Color(0x66FFE6B0), Offset(size.width - 4, size.height - 14.dp.toPx()), Offset(10.dp.toPx(), size.height - 14.dp.toPx()), 1f)
@@ -110,7 +108,6 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
     val ctx = LocalContext.current
     val pages = r.chapters.size + 1 // last page = ship's log
     val page = g.bookPage.coerceIn(0, pages - 1)
-    val play = cue()
     val ch = r.chapters.getOrNull(page)
     val pick = rememberPhotoPicker { uri ->
         val ok = if (ch != null) g.attachToChapter(r.runId, ch.key, uri) else false
@@ -135,7 +132,7 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
                 val labels = r.chapters.map { "${it.yearLabel} · ${it.title.removePrefix("The ").uppercase()}" } + "LOG · ${r.log.size} ENTRIES"
                 labels.forEachIndexed { i, l ->
-                    Column(Modifier.weight(1f).clickable { play(uk.saul.colonyship.audio.Cue.TICK); g.bookPage = i }, horizontalAlignment = Alignment.CenterHorizontally) {
+                    Column(Modifier.weight(1f).hapticClick(uk.saul.colonyship.audio.Cue.TICK) { g.bookPage = i }, horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(Modifier.size(11.dp).clip(CircleShape).background(if (i == page) C.orange else if (i < page) Color(0xFF7A5A40) else Color.Transparent).border(1.5.dp, Color(0xFF7A5A40), CircleShape))
                         Text(l, style = label(7.5.sp, if (i == page) C.inkRed else Color(0xFF6A4A32), 0.06f), textAlign = TextAlign.Center, maxLines = 2, modifier = Modifier.padding(top = 3.dp))
                     }
@@ -146,13 +143,13 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
             else LogPage(g, r, showPrompt, showImage)
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                if (page > 0) Text("← PREVIOUS", style = label(10.sp, C.tealDk), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.TICK); g.bookPage = page - 1 }.padding(6.dp))
+                if (page > 0) Text("← PREVIOUS", style = label(10.sp, C.tealDk), modifier = Modifier.hapticClick(uk.saul.colonyship.audio.Cue.TICK) { g.bookPage = page - 1 }.padding(6.dp))
                 Spacer(Modifier.weight(1f))
-                if (page < pages - 1) Text("NEXT →", style = label(10.sp, C.tealDk), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.TICK); g.bookPage = page + 1 }.padding(6.dp))
+                if (page < pages - 1) Text("NEXT →", style = label(10.sp, C.tealDk), modifier = Modifier.hapticClick(uk.saul.colonyship.audio.Cue.TICK) { g.bookPage = page + 1 }.padding(6.dp))
             }
             Row(Modifier.fillMaxWidth()) {
                 Spacer(Modifier.weight(1f))
-                Text("LEGACY LIST →", style = label(10.sp, C.tealDk, 0.14f), modifier = Modifier.clickable { play(uk.saul.colonyship.audio.Cue.BUTTON); g.openBook = null }.padding(6.dp))
+                Text("LEGACY LIST →", style = label(10.sp, C.tealDk, 0.14f), modifier = Modifier.hapticClick { g.openBook = null }.padding(6.dp))
             }
             val shelf = (listOf(r) + g.archive.filter { it.runId != r.runId }).take(3)
             Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -181,7 +178,7 @@ private fun ChapterPage(g: GameController, r: RunRecord, ch: Chapter, page: Int,
     // Plate
     val bmp = rememberFileBitmap(ch.imagePath)
     Box(Modifier.fillMaxWidth().background(Color(0xFFF7EEDA)).border(1.dp, Color(0xFF9A7A5A)).padding(5.dp).border(1.dp, Color(0xFF9A7A5A)).padding(3.dp)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1.333f).clickable { showImage(ch.imagePath, artRes(ch.art), ch.caption) }) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.333f).hapticClick { showImage(ch.imagePath, artRes(ch.art), ch.caption) }) {
             if (bmp != null) Image(bmp, ch.caption, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Image(painterResource(artRes(ch.art)), ch.caption, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Row(Modifier.padding(6.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -190,7 +187,7 @@ private fun ChapterPage(g: GameController, r: RunRecord, ch: Chapter, page: Int,
                     Text(if (bmp != null) "YOUR PICTURE · ATTACHED FROM GALLERY" else "SHIP'S RECORD · DEFAULT PLATE", style = label(7.5.sp, C.cream, 0.1f))
                 }
                 Spacer(Modifier.weight(1f))
-                if (!current) Box(Modifier.background(Color(0xFFF0E3C4), RoundedCornerShape(2.dp)).clickable { pick() }.padding(horizontal = 5.dp, vertical = 2.dp)) {
+                if (!current) Box(Modifier.background(Color(0xFFF0E3C4), RoundedCornerShape(2.dp)).hapticClick { pick() }.padding(horizontal = 5.dp, vertical = 2.dp)) {
                     Text(if (bmp != null) "REPLACE" else "ATTACH", style = label(8.sp, C.ink, 0.1f))
                 }
             }
@@ -244,7 +241,7 @@ private fun LogPage(g: GameController, r: RunRecord, showPrompt: (PromptShown) -
             if (e.choice.isNotBlank()) Text("Chose: ${e.choice}", style = label(9.sp, C.tealDk, 0.08f))
             if (e.imagePath != null) {
                 val bmp = rememberFileBitmap(e.imagePath)
-                Box(Modifier.padding(vertical = 5.dp).fillMaxWidth().aspectRatio(1.6f).border(1.dp, Color(0xFF9A7A5A)).clickable { showImage(e.imagePath, artRes(e.art), e.title) }) {
+                Box(Modifier.padding(vertical = 5.dp).fillMaxWidth().aspectRatio(1.6f).border(1.dp, Color(0xFF9A7A5A)).hapticClick { showImage(e.imagePath, artRes(e.art), e.title) }) {
                     if (bmp != null) Image(bmp, e.title, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                 }
             }
@@ -267,11 +264,10 @@ fun PaperChip(text: String, color: Color) {
 
 @Composable
 fun PillButton(text: String, filled: Boolean, modifier: Modifier, small: Boolean = false, onClick: () -> Unit) {
-    val play = cue()
     val shape = RoundedCornerShape(50)
     Box(modifier.height(if (small) 28.dp else 36.dp).shadow(if (filled) 4.dp else 0.dp, shape).clip(shape)
         .then(if (filled) Modifier.background(Brush.verticalGradient(listOf(Color(0xFFF08A45), Color(0xFFB4461B)))) else Modifier.background(Color(0x1A2A1A0F)).border(1.5.dp, C.ink, shape))
-        .clickable { play(uk.saul.colonyship.audio.Cue.BUTTON); onClick() }, contentAlignment = Alignment.Center) {
+        .hapticClick { onClick() }, contentAlignment = Alignment.Center) {
         Text(text, style = label(if (small) 8.5.sp else 10.sp, if (filled) Color(0xFFFFF4E0) else C.ink, 0.1f), maxLines = 1)
     }
 }

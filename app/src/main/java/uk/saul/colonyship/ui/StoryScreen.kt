@@ -7,7 +7,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -63,15 +62,18 @@ fun StoryScreen(g: GameController, startPage: Int = 0) {
     var page by remember { mutableStateOf(startPage.coerceIn(0, PROLOGUE.lastIndex)) }
     val play = cue()
     fun advance() {
-        if (page < PROLOGUE.lastIndex) { page++; play(Cue.TICK) } else { play(Cue.SELECT); g.finishStory() }
+        if (page < PROLOGUE.lastIndex) page++ else g.finishStory()
     }
-    BackHandler { if (page > 0) { page--; play(Cue.TICK) } else g.finishStory() }
-    StoryPage(page, onTap = { advance() }, onSkip = { play(Cue.BUTTON); g.finishStory() })
+    BackHandler { play(if (page > 0) Cue.TICK else Cue.BUTTON); if (page > 0) page-- else g.finishStory() }
+    StoryPage(page, onTap = { advance() }, onSkip = { g.finishStory() })
 }
 
 @Composable
 fun StoryPage(page: Int, onTap: () -> Unit, onSkip: () -> Unit, animate: Boolean = true) {
-    Box(Modifier.fillMaxSize().background(Color(0xFF050302)).pointerInput(Unit) { detectTapGestures { onTap() } }) {
+    val play = cue()
+    Box(Modifier.fillMaxSize().background(Color(0xFF050302)).pointerInput(Unit) {
+        detectTapGestures { play(if (page == PROLOGUE.lastIndex) Cue.SELECT else Cue.TICK); onTap() }
+    }) {
         Crossfade(page, animationSpec = tween(700), label = "story") { p ->
             val panel = PROLOGUE[p]
             val zoom = remember(p) { Animatable(if (animate) 1.0f else 1.06f) }
@@ -103,7 +105,7 @@ fun StoryPage(page: Int, onTap: () -> Unit, onSkip: () -> Unit, animate: Boolean
         Row(Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(horizontal = 18.dp, vertical = 14.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text("PROLOGUE", style = label(10.sp, C.cream.copy(alpha = 0.8f), 0.3f))
             Spacer(Modifier.weight(1f))
-            Box(Modifier.border(1.dp, C.cream.copy(alpha = 0.6f), RoundedCornerShape(14.dp)).clickable(remember { MutableInteractionSource() }, null) { onSkip() }
+            Box(Modifier.border(1.dp, C.cream.copy(alpha = 0.6f), RoundedCornerShape(14.dp)).hapticClick(interactionSource = remember { MutableInteractionSource() }, ripple = false) { onSkip() }
                 .padding(horizontal = 14.dp, vertical = 6.dp)) {
                 Text("SKIP ›", style = label(11.sp, C.cream, 0.2f))
             }

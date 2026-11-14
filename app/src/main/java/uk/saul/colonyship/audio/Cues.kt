@@ -2,18 +2,28 @@ package uk.saul.colonyship.audio
 
 import android.content.Context
 import android.media.AudioAttributes
-import android.media.MediaPlayer
 import android.media.SoundPool
 import android.os.Build
 import android.os.VibrationEffect
 import android.os.Vibrator
 import android.os.VibratorManager
 import android.util.Log
+import android.view.HapticFeedbackConstants
+import android.view.View
 import uk.saul.colonyship.R
 
 enum class Cue { TICK, BUTTON, SELECT, IMPACT, ALARM, POD_LOSS, JUMP, SCAN, SETTLE }
 
-/** Sound effects, ambient music and haptics in one place, with graceful fallbacks. */
+/**
+ * Sound effects, ambient music and haptics in one place, with graceful fallbacks.
+ *
+ * Button-press haptics use [Vibrator] one-shot pulses, not [VibrationEffect.createPredefined]
+ * or weak [HapticFeedbackConstants]. Samsung treats predefined EFFECT_CLICK / EFFECT_TICK
+ * (and many View haptic constants) as system "touch vibration" and silently drops them
+ * when that setting is off. [VibrationEffect.createOneShot] and waveforms still run
+ * with the VIBRATE permission. [View.performHapticFeedback] is only a fallback if the
+ * vibrator is missing.
+ */
 class Cues(private val ctx: Context) {
     var musicVolume = 0.6f
         set(v) { field = v; looper.volume = v * 0.9f }
@@ -49,35 +59,54 @@ class Cues(private val ctx: Context) {
     fun pauseMusic() = looper.pause()
     fun release() { looper.release(); try { pool?.release() } catch (_: Exception) {} }
 
-    fun play(c: Cue) {
+    fun play(c: Cue, view: View? = null) {
         val now = System.currentTimeMillis()
         if (c == Cue.TICK) { if (now - lastTick < 45) return; lastTick = now }
         val vol = when (c) { Cue.TICK -> 0.35f; Cue.BUTTON -> 0.6f; else -> 1f } * sfxVolume
         if (vol > 0.01f) ids[c]?.let { pool?.play(it, vol, vol, 1, 0, 1f) }
-        vibrate(c)
+        vibrate(c, view)
     }
 
-    fun vibrate(c: Cue) {
-        val v = vibrator ?: return
-        if (!hapticsOn || !v.hasVibrator()) return
-        try {
-            val amp = v.hasAmplitudeControl()
-            val effect: VibrationEffect = when (c) {
-                Cue.TICK -> predefined(VibrationEffect.EFFECT_TICK) ?: VibrationEffect.createOneShot(8, if (amp) 60 else VibrationEffect.DEFAULT_AMPLITUDE)
-                Cue.BUTTON -> predefined(VibrationEffect.EFFECT_CLICK) ?: VibrationEffect.createOneShot(18, if (amp) 140 else VibrationEffect.DEFAULT_AMPLITUDE)
-                Cue.SELECT -> predefined(VibrationEffect.EFFECT_HEAVY_CLICK) ?: VibrationEffect.createOneShot(30, VibrationEffect.DEFAULT_AMPLITUDE)
-                Cue.SCAN -> wave(longArrayOf(0, 20, 60, 20, 60, 20), intArrayOf(0, 90, 0, 120, 0, 160), amp)
-                Cue.IMPACT -> wave(longArrayOf(0, 90, 40, 140, 50, 60), intArrayOf(0, 255, 0, 200, 0, 120), amp)
-                Cue.ALARM -> wave(longArrayOf(0, 180, 120, 180, 120, 180), intArrayOf(0, 220, 0, 220, 0, 220), amp)
-                Cue.POD_LOSS -> wave(longArrayOf(0, 60, 200, 260), intArrayOf(0, 200, 0, 90), amp)
-                Cue.JUMP -> wave(longArrayOf(0, 200, 200, 300, 400, 300, 200), intArrayOf(0, 40, 80, 140, 255, 140, 50), amp)
-                Cue.SETTLE -> wave(longArrayOf(0, 60, 120, 60, 120, 60, 160, 500), intArrayOf(0, 120, 0, 160, 0, 200, 0, 255), amp)
-            }
-            v.vibrate(effect)
-        } catch (e: Exception) { Log.w("Cues", "vibrate", e) }
+    fun vibrate(c: Cue, view: View? = null) {
+        if (!hapticsOn) return
+        val v = vibrator
+        if (v != null && v.hasVibrator()) {
+            try {
+                v.vibrate(hapticEffect(c, v.hasAmplitudeControl()))
+                return
+            } catch (e: Exception) { Log.w("Cues", "vibrate", e) }
+        }
+        viewHaptic(view, c)
     }
 
-    private fun predefined(id: Int): VibrationEffect? = if (Build.VERSION.SDK_INT >= 29) VibrationEffect.createPredefined(id) else null
-    private fun wave(t: LongArray, a: IntArray, amp: Boolean): VibrationEffect =
-        if (amp) VibrationEffect.createWaveform(t, a, -1) else VibrationEffect.createWaveform(t, -1)
+    private fun viewHaptic(view: View?, c: Cue) {
+        if (view == null) return
+        val constant = when (c) {
+            Cue.TICK -> HapticFeedbackConstants.CLOCK_TICK
+            Cue.BUTTON, Cue.SELECT -> if (Build.VERSION.SDK_INT >= 30) HapticFeedbackConstants.CONFIRM else HapticFeedbackConstants.KEYBOARD_TAP
+            else -> HapticFeedbackConstants.LONG_PRESS
+        }
+        try { view.performHapticFeedback(constant) } catch (_: Exception) {}
+    }
 }
+
+/** Durations chosen to be clearly felt on Samsung phones (25–40 ms, default amplitude). */
+internal const val HAPTIC_TICK_MS = 28L
+internal const val HAPTIC_BUTTON_MS = 36L
+internal const val HAPTIC_SELECT_MS = 40L
+
+/** Build the vibration for a cue. Button presses are one-shots, never createPredefined. */
+internal fun hapticEffect(c: Cue, amplitudeControl: Boolean): VibrationEffect = when (c) {
+    Cue.TICK -> VibrationEffect.createOneShot(HAPTIC_TICK_MS, VibrationEffect.DEFAULT_AMPLITUDE)
+    Cue.BUTTON -> VibrationEffect.createOneShot(HAPTIC_BUTTON_MS, VibrationEffect.DEFAULT_AMPLITUDE)
+    Cue.SELECT -> VibrationEffect.createOneShot(HAPTIC_SELECT_MS, VibrationEffect.DEFAULT_AMPLITUDE)
+    Cue.SCAN -> hapticWave(longArrayOf(0, 20, 60, 20, 60, 20), intArrayOf(0, 90, 0, 120, 0, 160), amplitudeControl)
+    Cue.IMPACT -> hapticWave(longArrayOf(0, 90, 40, 140, 50, 60), intArrayOf(0, 255, 0, 200, 0, 120), amplitudeControl)
+    Cue.ALARM -> hapticWave(longArrayOf(0, 180, 120, 180, 120, 180), intArrayOf(0, 220, 0, 220, 0, 220), amplitudeControl)
+    Cue.POD_LOSS -> hapticWave(longArrayOf(0, 60, 200, 260), intArrayOf(0, 200, 0, 90), amplitudeControl)
+    Cue.JUMP -> hapticWave(longArrayOf(0, 200, 200, 300, 400, 300, 200), intArrayOf(0, 40, 80, 140, 255, 140, 50), amplitudeControl)
+    Cue.SETTLE -> hapticWave(longArrayOf(0, 60, 120, 60, 120, 60, 160, 500), intArrayOf(0, 120, 0, 160, 0, 200, 0, 255), amplitudeControl)
+}
+
+internal fun hapticWave(t: LongArray, a: IntArray, amp: Boolean): VibrationEffect =
+    if (amp) VibrationEffect.createWaveform(t, a, -1) else VibrationEffect.createWaveform(t, -1)

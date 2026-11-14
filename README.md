@@ -10,7 +10,7 @@ Build (on the box):
     ./gradlew testDebugUnitTest assembleDebug assembleRelease
 
 - Debug APK: `app/build/outputs/apk/debug/app-debug.apk`.
-- Signed release APK: `app/build/outputs/apk/release/app-release.apk` (copied to `/workspace/colonyship/ColonyShip-v0.2.0.apk`). The release keystore lives outside the repo at `/workspace/colonyship/keystore/` and is never committed.
+- Signed release APK: `app/build/outputs/apk/release/app-release.apk` (copied to `/workspace/colonyship/ColonyShip-v0.2.1.apk`). The release keystore lives outside the repo at `/workspace/colonyship/keystore/` and is never committed.
 - Screenshots: the Robolectric/Roborazzi tests write them to `app/build/shots/`. Copies live in `/workspace/colonyship/screens/v0.2/` (v0.1 shots in `screens/v0.1/`).
 - Paintings: originals in `art-src/` and `art-src/v2/`. Bundled as WebP in `res/drawable-nodpi/art_<key>.webp`, looked up by key at runtime.
 - Audio generators: `/workspace/colonyship/audio/music2.py` (seamless 64 s loop plus a 6 s tail for crossfading) and `sfx.py`.

@@ -13,7 +13,6 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
@@ -58,8 +57,9 @@ data class PromptShown(val title: String, val text: String)
 @Composable
 fun PromptSheet(p: PromptShown, onClose: () -> Unit) {
     val ctx = LocalContext.current
+    val play = cue()
     LaunchedEffect(p) { copyText(ctx, p.title, p.text) }
-    Dialog(onDismissRequest = onClose) {
+    Dialog(onDismissRequest = { play(uk.saul.colonyship.audio.Cue.BUTTON); onClose() }) {
         Panel(Modifier.padding(4.dp)) {
             SectionTitle("✓", p.title.uppercase(), "COPIED", C.glow)
             Box(Modifier.heightIn(max = 300.dp).fillMaxWidth().background(Color(0xFF071311), RoundedCornerShape(6.dp)).border(1.dp, Color(0xFF2B4A44), RoundedCornerShape(6.dp)).padding(10.dp)) {
@@ -99,10 +99,11 @@ fun rememberFileBitmap(path: String?): ImageBitmap? {
 @Composable
 fun FullImage(path: String?, fallbackRes: Int, caption: String, onClose: () -> Unit) {
     val bmp = rememberFileBitmap(path)
+    val play = cue()
     var scale by remember { mutableFloatStateOf(1f) }
     var offset by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().background(Color.Black).clickable { onClose() }) {
+    Dialog(onDismissRequest = { play(uk.saul.colonyship.audio.Cue.BUTTON); onClose() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        Box(Modifier.fillMaxSize().background(Color.Black).hapticClick { onClose() }) {
             val m = Modifier.fillMaxSize().pointerInput(Unit) {
                 detectTransformGestures { _, pan, zoom, _ -> scale = (scale * zoom).coerceIn(1f, 5f); offset = if (scale == 1f) androidx.compose.ui.geometry.Offset.Zero else offset + pan }
             }.graphicsLayer { scaleX = scale; scaleY = scale; translationX = offset.x; translationY = offset.y }

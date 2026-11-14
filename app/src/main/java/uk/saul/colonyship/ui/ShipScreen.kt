@@ -237,12 +237,27 @@ private fun PowerPanel(g: GameController, s: GameState) {
 fun PowerSlider(value: Int, teal: Boolean, modifier: Modifier, onChange: (Int) -> Unit) {
     val cur by rememberUpdatedState(value)
     val change by rememberUpdatedState(onChange)
+    val play = cue()
     Canvas(modifier
-        .pointerInput(Unit) { detectTapGestures { change(((it.x / size.width) * 100).roundToInt().coerceIn(0, 100)) } }
+        .pointerInput(Unit) {
+            detectTapGestures {
+                change(((it.x / size.width) * 100).roundToInt().coerceIn(0, 100))
+                play(Cue.BUTTON)
+            }
+        }
         .pointerInput(Unit) {
             var acc = 0f
-            detectHorizontalDragGestures(onDragStart = { acc = cur.toFloat() }) { ch, dx ->
-                ch.consume(); acc += dx / size.width * 100; change(acc.roundToInt().coerceIn(0, 100))
+            detectHorizontalDragGestures(
+                onDragStart = { acc = cur.toFloat() },
+                onDragEnd = { play(Cue.BUTTON) },
+                onDragCancel = { play(Cue.BUTTON) },
+            ) { ch, dx ->
+                ch.consume(); acc += dx / size.width * 100
+                val v = acc.roundToInt().coerceIn(0, 100)
+                if (v != cur) {
+                    change(v)
+                    play(Cue.TICK)
+                }
             }
         }) {
         val y = size.height / 2; val th = 6.dp.toPx()

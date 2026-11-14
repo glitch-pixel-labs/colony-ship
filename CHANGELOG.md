@@ -2,6 +2,16 @@
 
 All notable changes to Colony Ship. Versions follow semver.
 
+## [0.2.1] - 2026-11-14
+
+Haptics fix, from playtesting 0.2.0 on a Samsung Galaxy A54.
+
+### Changed
+- **Haptics on every press:** all clickable controls now go through a shared `hapticClick` modifier (or an explicit `play()` in tap gestures, back navigation and dialog dismiss), so a new button cannot ship without a buzz.
+- **Stronger, Samsung-safe clicks:** button, tab, toggle and tick haptics now use the Vibrator with a 28–40 ms one-shot at default amplitude. The old `VibrationEffect.createPredefined(EFFECT_CLICK / TICK)` path is gone — Samsung often swallows those when system "touch vibration" is off, which is why many presses felt like they did nothing.
+- If the vibrator is missing, the code falls back to `View.performHapticFeedback` with a strong constant. The in-game haptics toggle is still respected and still defaults to on.
+- Sliders tick while dragging and click on release (power channels and volume). Tapping a plate, attached picture, history-book page, legacy list item, skip/next, dialog dismiss and the system back key now also buzz.
+
 ## [0.2.0] - 2026-11-14
 
 First signed release, for GitHub / Obtainium. This version responds to Saul's feedback on 0.1.0.

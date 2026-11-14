@@ -78,7 +78,7 @@ fun TransitOverlay(s: GameState, fixedProgress: Float? = null, onDone: () -> Uni
     val shipYr = shipDays / Physics.DAYS_PER_YEAR
 
     Box(Modifier.fillMaxSize().background(Color(0xFF020104)).pointerInput(Unit) {
-        detectTapGestures { if (fixedProgress == null && progress.value > 0.25f) done() }
+        detectTapGestures { if (fixedProgress == null && progress.value > 0.25f) { play(Cue.BUTTON); done() } }
     }) {
         Canvas(Modifier.fillMaxSize()) {
             drawSky(stars, sparks, beta, peak, p)

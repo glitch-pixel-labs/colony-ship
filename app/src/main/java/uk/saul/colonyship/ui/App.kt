@@ -6,7 +6,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -34,7 +33,7 @@ import uk.saul.colonyship.audio.Cue
 import uk.saul.colonyship.game.*
 import kotlin.random.Random
 
-const val VERSION = "0.2.0"
+const val VERSION = "0.2.1"
 
 @Composable
 fun ColonyApp(g: GameController) {
@@ -55,7 +54,9 @@ fun ColonyApp(g: GameController) {
 fun GameShell(g: GameController) {
     var prompt by remember { mutableStateOf<PromptShown?>(null) }
     var image by remember { mutableStateOf<Triple<String?, Int, String>?>(null) }
+    val play = cue()
     BackHandler(enabled = true) {
+        play(Cue.BUTTON)
         when {
             g.openBook != null && g.tab == Tab.ARCHIVE -> g.openBook = null
             g.tab != Tab.SHIP -> g.tab = Tab.SHIP
@@ -147,7 +148,8 @@ fun IntroScreen(g: GameController) {
             Text("v$VERSION · ALL WORDS, ART, MUSIC AND CODE ORIGINAL", style = label(8.sp, C.muted.copy(alpha = 0.8f), 0.14f))
         }
     }
-    if (confirmNew) Dialog(onDismissRequest = { confirmNew = false }) {
+    val play = cue()
+    if (confirmNew) Dialog(onDismissRequest = { play(Cue.BUTTON); confirmNew = false }) {
         Panel {
             SectionTitle("!!", "ABANDON CURRENT VOYAGE?")
             AiQuote("Starting again means this voyage ends here. The sleepers will never know. I will keep the record.", null, eye = 36.dp, size = 13)
@@ -162,7 +164,8 @@ fun IntroScreen(g: GameController) {
 
 @Composable
 fun SettingsScreen(g: GameController) {
-    BackHandler { g.screen = g.settingsFrom }
+    val play = cue()
+    BackHandler { play(Cue.BUTTON); g.screen = g.settingsFrom }
     Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().verticalScroll(rememberScrollState()).padding(10.dp), verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Header("SETTINGS", "MENU", listOf(Color(0xFF3FE0B0), null, null), null)
         Panel {
@@ -200,7 +203,7 @@ fun SettingsScreen(g: GameController) {
         }
         Panel {
             SectionTitle("04", "ABOUT", "v$VERSION")
-            Text("Colony Ship v$VERSION (debug build). All writing, art, music, sound and code are original to this game. Typefaces: Righteous, VT323, Barlow, Fraunces and EB Garamond, used under the SIL Open Font Licence.", style = body(11.sp, C.muted))
+            Text("Colony Ship v$VERSION. All writing, art, music, sound and code are original to this game. Typefaces: Righteous, VT323, Barlow, Fraunces and EB Garamond, used under the SIL Open Font Licence.", style = body(11.sp, C.muted))
         }
         ConsoleKey("DONE", Modifier.fillMaxWidth(), KeyStyle.ORANGE) { g.screen = g.settingsFrom }
     }
@@ -217,9 +220,8 @@ private fun VolumeRow(title: String, sub: String, v: Float, onChange: (Float) ->
 
 @Composable
 fun Toggle(on: Boolean, onChange: (Boolean) -> Unit) {
-    val play = cue()
     Box(Modifier.size(54.dp, 28.dp).background(if (on) C.tealDk else Color(0xFF221913), RoundedCornerShape(14.dp)).border(1.5.dp, Color(0xFF8C7556), RoundedCornerShape(14.dp))
-        .clickable { play(Cue.TICK); onChange(!on) }.padding(3.dp), contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart) {
+        .hapticClick { onChange(!on) }.padding(3.dp), contentAlignment = if (on) Alignment.CenterEnd else Alignment.CenterStart) {
         Box(Modifier.size(22.dp).background(Brush.radialGradient(listOf(Color(0xFFFFF6E0), Color(0xFFD9C69C), Color(0xFF8A7350))), RoundedCornerShape(11.dp)))
     }
 }

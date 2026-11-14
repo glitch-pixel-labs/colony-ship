@@ -65,7 +65,7 @@ class GameController(private val store: Store, val cues: Cues) {
 
     fun continueRun() { if (state != null) { screen = Screen.GAME } }
 
-    fun setPower(ch: Channel, v: Int) { state?.let { val n = Engine.setPower(it, ch, v); if (n.power != it.power) { state = n; store.saveCurrent(n); cues.play(Cue.TICK) } } }
+    fun setPower(ch: Channel, v: Int) { state?.let { val n = Engine.setPower(it, ch, v); if (n.power != it.power) { state = n; store.saveCurrent(n) } } }
 
     /** Starts the jump animation; [finishJump] is called by the overlay when it ends. */
     fun jump() {

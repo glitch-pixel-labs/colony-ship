@@ -11,6 +11,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.graphicsLayer
@@ -46,7 +48,34 @@ import kotlin.math.sin
 val LocalCues = staticCompositionLocalOf<Cues?> { null }
 
 @Composable
-fun cue(): (Cue) -> Unit { val c = LocalCues.current; return { c?.play(it) } }
+fun cue(): (Cue) -> Unit {
+    val c = LocalCues.current
+    val view = LocalView.current
+    return { c?.play(it, view) }
+}
+
+/**
+ * The one clickable path used everywhere in the UI. Plays a haptic (and the matching
+ * sound) then runs [onClick], so a new control cannot forget the buzz.
+ * [ripple] defaults to the theme indication; console keys pass false to keep the bakelite press.
+ */
+fun Modifier.hapticClick(
+    cue: Cue = Cue.BUTTON,
+    enabled: Boolean = true,
+    role: Role? = Role.Button,
+    interactionSource: MutableInteractionSource? = null,
+    ripple: Boolean = true,
+    onClick: () -> Unit,
+): Modifier = composed {
+    val cues = LocalCues.current
+    val view = LocalView.current
+    val src = interactionSource ?: remember { MutableInteractionSource() }
+    val indication = if (ripple) LocalIndication.current else null
+    clickable(src, indication, enabled, role = role) {
+        cues?.play(cue, view)
+        onClick()
+    }
+}
 
 /** Dark brushed-metal panel with rivets, matching the mock-up. */
 @Composable
@@ -118,7 +147,6 @@ fun ConsoleKey(
     text: String, modifier: Modifier = Modifier, style: KeyStyle = KeyStyle.DARK, height: Dp = 40.dp, sub: String? = null,
     enabled: Boolean = true, textSize: Int = 13, icon: (@Composable () -> Unit)? = null, cueType: Cue = Cue.BUTTON, onClick: () -> Unit,
 ) {
-    val play = cue()
     val src = remember { MutableInteractionSource() }
     val pressed by src.collectIsPressedAsState()
     val (top, bottom, fg, edge) = when (style) {
@@ -134,7 +162,7 @@ fun ConsoleKey(
         modifier
             .height(height + 3.dp)
             .alpha(if (enabled) 1f else 0.45f)
-            .clickable(src, null, enabled = enabled, role = Role.Button) { play(cueType); onClick() },
+            .hapticClick(cueType, enabled = enabled, role = Role.Button, interactionSource = src, ripple = false) { onClick() },
     ) {
         Box(Modifier.fillMaxWidth().height(height).offset(y = 3.dp).background(edge, shape))
         Box(
@@ -310,7 +338,6 @@ private inline fun DrawScope.clipRectSafe(block: DrawScope.() -> Unit) { drawCon
 /** The cream bakelite header plate with stripes, emblem and VFD display. */
 @Composable
 fun Header(line1: String, line2: String, lamps: List<Color?>, onMenu: (() -> Unit)?) {
-    val play = cue()
     val shape = RoundedCornerShape(12.dp)
     Box(
         Modifier.fillMaxWidth().height(58.dp).shadow(8.dp, shape).border(1.5.dp, Color(0xFF1A110B), shape).padding(1.5.dp).border(1.dp, Color(0xFF6B5440), shape)
@@ -326,7 +353,7 @@ fun Header(line1: String, line2: String, lamps: List<Color?>, onMenu: (() -> Uni
             }
         }
         Row(Modifier.fillMaxHeight().padding(start = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(38.dp).clip(CircleShape).clickable(enabled = onMenu != null) { play(Cue.BUTTON); onMenu?.invoke() }) {
+            Box(Modifier.size(38.dp).clip(CircleShape).hapticClick(enabled = onMenu != null) { onMenu?.invoke() }) {
                 Emblem(Modifier.fillMaxSize())
             }
             Spacer(Modifier.width(7.dp))
@@ -376,7 +403,7 @@ fun BottomNav(tab: Tab, onTab: (Tab) -> Unit, alerts: Set<Tab>) {
     ) {
         Tab.entries.forEach { t ->
             val on = t == tab
-            ConsoleKey("", Modifier.weight(1f), if (on) KeyStyle.ON else KeyStyle.DARK, height = 40.dp, cueType = Cue.TICK, onClick = { onTab(t) }, icon = {
+            ConsoleKey("", Modifier.weight(1f), if (on) KeyStyle.ON else KeyStyle.DARK, height = 40.dp, cueType = Cue.BUTTON, onClick = { onTab(t) }, icon = {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Lamp(when { on -> Color(0xFFFF8A2A); t in alerts -> Color(0xFFFF3B1F); else -> null }, 5.dp)
                     Spacer(Modifier.height(3.dp))

@@ -117,7 +117,8 @@ fun ScanScreen(g: GameController, s: GameState) {
         }
         Spacer(Modifier.height(4.dp))
     }
-    if (confirm) Dialog(onDismissRequest = { confirm = false }) {
+    val play = cue()
+    if (confirm) Dialog(onDismissRequest = { play(Cue.BUTTON); confirm = false }) {
         Panel {
             SectionTitle("!!", "SETTLE ON ${p.name.uppercase()}?")
             AiQuote("Once I begin the thaw there is no going back. The ship will be broken up for the colony and will never fly again. ${if (p.obs.values.any { !it.ok }) "Some readings are still question marks. " else ""}Shall I start the thaw?", null, eye = 36.dp, size = 13)

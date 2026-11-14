@@ -5,7 +5,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -74,7 +73,7 @@ fun EventScreen(g: GameController, s: GameState, showPrompt: (PromptShown) -> Un
                 if (entry.imagePath != null) {
                     Spacer(Modifier.width(8.dp))
                     val bmp = rememberFileBitmap(entry.imagePath)
-                    Box(Modifier.size(54.dp, 36.dp).clip(RoundedCornerShape(4.dp)).border(1.dp, C.cream2, RoundedCornerShape(4.dp)).clickable { showImage(entry.imagePath, artRes(ev.art), ev.title) }) {
+                    Box(Modifier.size(54.dp, 36.dp).clip(RoundedCornerShape(4.dp)).border(1.dp, C.cream2, RoundedCornerShape(4.dp)).hapticClick { showImage(entry.imagePath, artRes(ev.art), ev.title) }) {
                         if (bmp != null) Image(bmp, "Attached picture", Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
                     }
                 }
@@ -167,7 +166,6 @@ private fun Meter(k: String, v: String, modifier: Modifier, vc: Color, border: C
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 @Composable
 fun ChoiceCard(i: Int, c: ChoiceDef, onClick: () -> Unit) {
-    val play = cue()
     val letter = "ABC"[i].toString()
     val (bg, btn, title, desc, chipBg, chipFg, glow) = when (i) {
         0 -> ChoiceColors(listOf(Color(0xFF3BB5AC), Color(0xFF17605C)), listOf(Color(0xFFD8FFF6), Color(0xFF7FF5DC), Color(0xFF1F8A82)), Color(0xFFF2FFF9), Color(0xFFE3FBF5), Color(0x59000000), Color(0xFFC9FFF3), Color(0x592FA39C))
@@ -177,7 +175,7 @@ fun ChoiceCard(i: Int, c: ChoiceDef, onClick: () -> Unit) {
     val shape = RoundedCornerShape(10.dp)
     Box(Modifier.fillMaxWidth().shadow(if (glow != Color.Transparent) 10.dp else 4.dp, shape, ambientColor = glow, spotColor = glow)
         .clip(shape).background(Brush.verticalGradient(bg)).grain(0.5f)
-        .clickable { play(Cue.SELECT); onClick() }.padding(horizontal = 10.dp, vertical = 11.dp)) {
+        .hapticClick(Cue.SELECT) { onClick() }.padding(horizontal = 10.dp, vertical = 11.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(40.dp).shadow(4.dp, CircleShape).border(2.dp, Color(0xFF8C7556), CircleShape).clip(CircleShape).background(Brush.radialGradient(btn, center = Offset(30f, 26f))), contentAlignment = Alignment.Center) {
                 Text(letter, style = TextStyle(fontFamily = F.righteous, fontSize = 22.sp, color = if (i == 1) C.ink else Color(0xFF06302D).takeIf { i == 0 } ?: Color(0xFF4A1606)))
