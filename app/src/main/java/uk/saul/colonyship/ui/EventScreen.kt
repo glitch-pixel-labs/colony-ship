@@ -43,7 +43,7 @@ fun EventScreen(g: GameController, s: GameState, showPrompt: (PromptShown) -> Un
     val ev = entry?.let { Events.byId(it.eventId) }
     if (entry == null || ev == null) {
         Panel {
-            AiQuote("No incidents yet. Suspiciously quiet. Engage the jump drive on the Ship screen and I’ll find us some trouble.", "SHIP AI · INCIDENT LOG")
+            AiQuote("No incidents logged. Light the drive on the Ship screen; nothing happens to a ship sitting still.", "SHIP AI · INCIDENT LOG")
             Spacer(Modifier.height(10.dp))
             ConsoleKey("GO TO SHIP CONSOLE", Modifier.fillMaxWidth(), KeyStyle.ORANGE) { g.tab = Tab.SHIP }
         }
@@ -58,7 +58,7 @@ fun EventScreen(g: GameController, s: GameState, showPrompt: (PromptShown) -> Un
             Text(ev.kicker, style = label(10.sp, C.teal, 0.16f))
             Text(ev.title.uppercase(), style = TextStyle(fontFamily = F.righteous, fontSize = 27.sp, color = C.nix, lineHeight = 29.sp,
                 shadow = Shadow(Color(0xFF5A2008), Offset(3f, 3f), 0f)), modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
-            AiQuote(if (pending || entry.outcome.isBlank()) ev.ai(s) else entry.outcome, if (pending) null else "OUTCOME · DAY ${entry.day}", eye = 40.dp, size = 13)
+            AiQuote(if (pending || entry.outcome.isBlank()) ev.ai(s) else entry.outcome, if (pending) null else (if (entry.earthYear > 0) "OUTCOME · ${entry.earthYear} AD · ${"%.1f".format(entry.ly)} LY" else "OUTCOME · DAY ${entry.day}"), eye = 40.dp, size = 13)
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ConsoleKey("IMAGE PROMPT", Modifier.weight(1f), KeyStyle.CREAM, icon = { PicIcon(C.ink) }) {
@@ -90,7 +90,7 @@ fun EventScreen(g: GameController, s: GameState, showPrompt: (PromptShown) -> Un
                 }
             }
             when (s.phase) {
-                Phase.OUTCOME -> ConsoleKey("CONTINUE TO NEXT STAR", Modifier.fillMaxWidth(), KeyStyle.TEAL, height = 50.dp, textSize = 16, sub = "ARRIVE · RUN FIRST SURVEY PASS", cueType = Cue.SELECT) { g.arrive() }
+                Phase.OUTCOME -> ConsoleKey("BRAKE INTO THE NEXT SYSTEM", Modifier.fillMaxWidth(), KeyStyle.TEAL, height = 50.dp, textSize = 16, sub = "DECELERATE · RUN FIRST SURVEY PASS", cueType = Cue.SELECT) { g.arrive() }
                 Phase.ORBIT -> ConsoleKey("VIEW PLANET SURVEY", Modifier.fillMaxWidth(), KeyStyle.ON, height = 44.dp) { g.tab = Tab.SCAN }
                 Phase.CRUISE -> ConsoleKey("BACK TO SHIP CONSOLE", Modifier.fillMaxWidth(), KeyStyle.DARK) { g.tab = Tab.SHIP }
                 else -> {}

@@ -82,10 +82,8 @@ fun Modifier.grain(alpha: Float = 1f) = this.drawWithCache {
 @Composable
 fun rememberArt(name: String): Int = remember(name) { artRes(name) }
 
-fun artRes(name: String): Int = when (name) {
-    "ai_eye" -> R.drawable.art_ai_eye; "cryobay" -> R.drawable.art_cryobay; "derelict" -> R.drawable.art_derelict
-    "engineering" -> R.drawable.art_engineering; "flare" -> R.drawable.art_flare; "intro" -> R.drawable.art_intro
-    "landfall" -> R.drawable.art_landfall; "legacy" -> R.drawable.art_legacy; "planet" -> R.drawable.art_planet
-    "ruin" -> R.drawable.art_ruin; "schism" -> R.drawable.art_schism; "ship" -> R.drawable.art_ship
-    else -> R.drawable.art_storm
+/** Looks up a painting by key (drawable art_<key>), falling back to the storm plate. */
+fun artRes(name: String): Int = artCache.getOrPut(name) {
+    try { R.drawable::class.java.getField("art_$name").getInt(null) } catch (_: Exception) { R.drawable.art_storm }
 }
+private val artCache = java.util.concurrent.ConcurrentHashMap<String, Int>()

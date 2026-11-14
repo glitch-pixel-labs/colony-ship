@@ -58,11 +58,11 @@ fun ArchiveScreen(g: GameController, showPrompt: (PromptShown) -> Unit, showImag
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         Panel {
             SectionTitle("05", "LEGACY ARCHIVE", "${g.archive.size} HISTORIES")
-            AiQuote(if (g.archive.isEmpty()) "No histories yet. Every colony I found, or failed to, will be bound here in leather I synthesised myself. Go on. Make me a library." else "Every world we chose, and every one that went wrong. I keep them all. I reread the sad ones more than is healthy.", null, eye = 36.dp, size = 13)
+            AiQuote(if (g.archive.isEmpty()) "No histories yet. Every colony I found, and every voyage that failed, will be recorded here in full." else "Every world we chose, and every voyage that went wrong. I keep them all, with the names.", null, eye = 36.dp, size = 13)
         }
         if (s != null && s.phase != Phase.ENDED) {
             Panel {
-                SectionTitle("··", "CURRENT VOYAGE · RUN ${s.runNumber.toString().padStart(2, '0')}", "DAY ${s.day}")
+                SectionTitle("··", "CURRENT VOYAGE · RUN ${s.runNumber.toString().padStart(2, '0')}", "${Physics.earthYear(s)} AD")
                 Text("${s.log.size} log entries · ${s.alive()} alive · ${s.log.count { it.imagePath != null }} pictures attached", style = body(12.sp, C.muted))
                 Spacer(Modifier.height(8.dp))
                 ConsoleKey("OPEN THE SHIP'S LOG", Modifier.fillMaxWidth(), KeyStyle.CREAM) { g.bookPage = 0; g.openBook = CURRENT }
@@ -99,10 +99,9 @@ fun BookSpine(r: RunRecord, modifier: Modifier, current: Boolean, onClick: () ->
     }
 }
 
-fun worldKind(p: Planet?): String = when {
-    p == null -> "Deep space"
-    p.water >= 82 -> "Ocean world"; p.temperature < -30 -> "Ice world"; p.water < 5 -> "Arid world"
-    p.atmosphere <= 2 -> "Toxic world"; p.moons > 0 && p.water < 30 -> "Arid moon"; else -> "Temperate world"
+fun worldKind(p: Planet?): String = if (p == null) "Deep space" else when (Endings.biome(p)) {
+    "ocean" -> "Ocean world"; "ice" -> "Ice world"; "desert" -> "Arid world"; "toxic" -> "Toxic world"; "volcanic" -> "Volcanic world"
+    "locked" -> "Tidally locked world"; "heavy" -> "High-gravity world"; "jungle" -> "Jungle world"; "storm" -> "Storm world"; else -> "Temperate world"
 }
 
 @OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
@@ -175,14 +174,14 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
 private fun ChapterPage(g: GameController, r: RunRecord, ch: Chapter, page: Int, current: Boolean, showPrompt: (PromptShown) -> Unit, showImage: (String?, Int, String) -> Unit, pick: () -> Unit) {
     val ctx = LocalContext.current
     Text(buildAnnotatedString {
-        withStyle(SpanStyle(color = C.ink)) { append(ch.yearLabel.lowercase().replaceFirstChar { it.uppercase() } + ": ") }
+        withStyle(SpanStyle(color = C.ink)) { append(Prompts.yearTitle(ch.yearLabel) + ": ") }
         withStyle(SpanStyle(color = C.inkRed)) { append(ch.title) }
     }, style = TextStyle(fontFamily = F.fraunces, fontWeight = FontWeight.Bold, fontSize = 29.sp, lineHeight = 32.sp), textAlign = TextAlign.Center)
     Text("✦ ✦ ✦", style = TextStyle(fontSize = 10.sp, color = C.inkRed), modifier = Modifier.padding(vertical = 6.dp))
     // Plate
     val bmp = rememberFileBitmap(ch.imagePath)
     Box(Modifier.fillMaxWidth().background(Color(0xFFF7EEDA)).border(1.dp, Color(0xFF9A7A5A)).padding(5.dp).border(1.dp, Color(0xFF9A7A5A)).padding(3.dp)) {
-        Box(Modifier.fillMaxWidth().aspectRatio(1.18f).clickable { showImage(ch.imagePath, artRes(ch.art), ch.caption) }) {
+        Box(Modifier.fillMaxWidth().aspectRatio(1.333f).clickable { showImage(ch.imagePath, artRes(ch.art), ch.caption) }) {
             if (bmp != null) Image(bmp, ch.caption, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             else Image(painterResource(artRes(ch.art)), ch.caption, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Row(Modifier.padding(6.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -232,14 +231,14 @@ private fun LogPage(g: GameController, r: RunRecord, showPrompt: (PromptShown) -
     val ctx = LocalContext.current
     Text("The Ship’s Log", style = TextStyle(fontFamily = F.fraunces, fontWeight = FontWeight.Bold, fontSize = 27.sp, color = C.ink))
     Text("✦ ✦ ✦", style = TextStyle(fontSize = 10.sp, color = C.inkRed), modifier = Modifier.padding(vertical = 6.dp))
-    if (r.log.isEmpty()) Text("Nothing logged yet. The voyage hasn’t properly started.", style = TextStyle(fontFamily = F.garamond, fontStyle = FontStyle.Italic, fontSize = 14.sp, color = C.ink))
+    if (r.log.isEmpty()) Text("Nothing logged yet. The voyage has not begun.", style = TextStyle(fontFamily = F.garamond, fontStyle = FontStyle.Italic, fontSize = 14.sp, color = C.ink))
     r.log.reversed().forEach { e ->
         val ev = Events.byId(e.eventId)
         var pickFor by remember { mutableStateOf(false) }
         val pick = rememberPhotoPicker { uri -> if (!g.attachToLog(r.runId, e.id, uri)) Toast.makeText(ctx, "Couldn’t read that picture", Toast.LENGTH_SHORT).show() }
         Column(Modifier.fillMaxWidth().padding(vertical = 6.dp).drawBehind { drawLine(Color(0x405A3A22), Offset(0f, size.height), Offset(size.width, size.height), 1f) }.padding(bottom = 8.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text("DAY ${e.day}", style = label(9.sp, C.inkRed, 0.12f)); Spacer(Modifier.width(6.dp))
+                Text(if (e.earthYear > 0) "DAY ${e.day} · ${e.earthYear} AD" else "DAY ${e.day}", style = label(9.sp, C.inkRed, 0.12f)); Spacer(Modifier.width(6.dp))
                 Text(e.title, style = TextStyle(fontFamily = F.fraunces, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = C.ink))
             }
             if (e.choice.isNotBlank()) Text("Chose: ${e.choice}", style = label(9.sp, C.tealDk, 0.08f))

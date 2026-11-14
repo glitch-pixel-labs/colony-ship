@@ -92,22 +92,50 @@ private fun ShipCam(s: GameState) {
 @Composable
 private fun VoyagePanel(g: GameController, s: GameState) {
     Panel {
-        SectionTitle("00", "VOYAGE", "DAY ${s.day} · JUMP ${s.jumps}", lamp = if (s.phase == Phase.EVENT) Color(0xFFFF3B1F) else Color(0xFF3FE0B0))
+        SectionTitle("00", "NAVIGATION", "TRANSIT ${s.jumps} · ${Physics.shipClock(s)}", lamp = if (s.phase == Phase.EVENT) Color(0xFFFF3B1F) else Color(0xFF3FE0B0))
+        NavReadouts(s)
+        Spacer(Modifier.height(8.dp))
         if (s.lastJumpReport.isNotEmpty() && s.phase != Phase.CRUISE) {
-            Text("LAST JUMP", style = label(9.sp, C.teal))
+            Text("LAST TRANSIT", style = label(9.sp, C.teal))
             FlowChips(s.lastJumpReport.take(10).map { it to (it.startsWith("−") && it.contains("POD") || it.contains("EXHAUSTED") || it.contains("FAILING") || it == "BROWNOUT") })
             Spacer(Modifier.height(8.dp))
         }
         when (s.phase) {
             Phase.CRUISE, Phase.ORBIT -> {
-                val days = Engine.travelDays(s)
-                ConsoleKey("ENGAGE JUMP DRIVE", Modifier.fillMaxWidth(), KeyStyle.ORANGE, height = 46.dp, textSize = 16,
-                    sub = "−${Engine.JUMP_COST.roundToInt()} POWER · NEXT STAR ${"%.1f".format(s.nextStarLy)} LY · ABOUT $days DAYS", cueType = Cue.SELECT) { g.jump() }
-                if (s.phase == Phase.ORBIT) Text("You are in orbit of ${s.planet?.name}. Jumping means leaving it behind.", style = body(11.sp, C.muted), modifier = Modifier.padding(top = 6.dp))
+                val t = Engine.plannedTransit(s)
+                ConsoleKey(if (s.jumps == 0 && s.phase == Phase.CRUISE) "LIGHT THE DRIVE" else "BURN FOR NEXT STAR", Modifier.fillMaxWidth(), KeyStyle.ORANGE, height = 50.dp, textSize = 16,
+                    sub = "−${Engine.JUMP_COST.roundToInt()} PWR · ${"%.1f".format(s.nextStarLy)} LY · ${"%.2f".format(t.beta)}c · ${"%.1f".format(t.shipYears)} SHIP / ${"%.1f".format(t.earthYears)} EARTH YRS", cueType = Cue.SELECT) { g.jump() }
+                if (s.phase == Phase.ORBIT) Text("We are in orbit of ${s.planet?.name}. Burning for the next star means leaving it behind for good.", style = body(11.sp, C.muted), modifier = Modifier.padding(top = 6.dp))
             }
             Phase.EVENT -> ConsoleKey("INCIDENT PENDING · OPEN EVENTS", Modifier.fillMaxWidth(), KeyStyle.ON, height = 44.dp) { g.tab = Tab.EVENTS }
-            Phase.OUTCOME -> ConsoleKey("CONTINUE TO NEXT STAR", Modifier.fillMaxWidth(), KeyStyle.TEAL, height = 44.dp) { g.arrive() }
+            Phase.OUTCOME -> ConsoleKey("BRAKE INTO THE NEXT SYSTEM", Modifier.fillMaxWidth(), KeyStyle.TEAL, height = 44.dp) { g.arrive() }
             Phase.ENDED -> ConsoleKey("READ THE HISTORY BOOK", Modifier.fillMaxWidth(), KeyStyle.CREAM, height = 44.dp) { g.tab = Tab.ARCHIVE }
+        }
+    }
+}
+
+/** Ship clock, Earth calendar, distance from Sol and light-lag, in VFD readouts. */
+@Composable
+fun NavReadouts(s: GameState) {
+    val dist = Physics.distanceFromSol(s)
+    val cells = listOf(
+        Triple("EARTH DATE", "${Physics.earthYear(s)} AD", "LAUNCHED ${Physics.LAUNCH_YEAR}"),
+        Triple("FROM SOL", "${"%.1f".format(dist)} LY", "MESSAGE LANDS ${Physics.messageArrives(s)}"),
+        Triple("SHIP TIME", "${"%.1f".format(Physics.shipYears(s))} YRS", "EARTH +${"%.1f".format(Physics.earthYears(s))} YRS"),
+        Triple("LAST PEAK", if (s.lastBeta > 0) "${"%.2f".format(s.lastBeta)} c" else "—", if (s.lastBeta > 0) "γ ${"%.2f".format(Physics.gamma(s.lastBeta))}" else "AT REST"),
+    )
+    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
+        cells.chunked(2).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                row.forEach { (k, v, sub) ->
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(5.dp)).background(Brush.verticalGradient(listOf(Color(0xFF071311), Color(0xFF0C1F1C))))
+                        .border(1.dp, Color(0xFF2B4A44), RoundedCornerShape(5.dp)).padding(horizontal = 7.dp, vertical = 4.dp)) {
+                        Text(k, style = label(8.sp, C.teal, 0.14f))
+                        Text(v, style = vfd(21.sp), maxLines = 1)
+                        Text(sub, style = label(7.5.sp, C.muted, 0.08f), maxLines = 1)
+                    }
+                }
+            }
         }
     }
 }
@@ -251,7 +279,7 @@ private fun HealthPanel(s: GameState) {
 @Composable
 private fun ConsumablesPanel(s: GameState) {
     Panel {
-        SectionTitle("04", "CONSUMABLES", "EST. ${Engine.daysLeft(s)} DAYS AT CURRENT BURN")
+        SectionTitle("04", "CONSUMABLES", "EST. ${Engine.hopsLeft(s)} TRANSITS AT CURRENT DRAW")
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             listOf(Triple("AIR", "O₂ reserve", s.air), Triple("FOOD", "Seed + rations", s.food), Triple("WATER", "Recycled", s.water), Triple("SPARES", "Parts bin", s.spares)).forEach { (n, sub, v) ->
                 Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {

@@ -34,6 +34,10 @@ data class LogEntry(
     val choice: String = "",
     val outcome: String = "",
     val imagePath: String? = null,
+    /** Earth calendar year when the entry was logged (0 = unknown, pre-v0.2 saves). */
+    val earthYear: Int = 0,
+    /** Distance from Sol in light years when logged. */
+    val ly: Double = 0.0,
 )
 
 @Serializable
@@ -84,7 +88,19 @@ data class GameState(
     val runId: String,
     val runNumber: Int,
     val seed: Long,
+    /** Ship (proper) time elapsed, in days. */
     var day: Int = 0,
+    /** Earth (coordinate) time elapsed since launch, in days. Runs faster than [day] at relativistic speed. */
+    var earthDays: Double = 0.0,
+    /** Position relative to Sol, light years. */
+    var posX: Double = 0.0,
+    var posY: Double = 0.0,
+    var posZ: Double = 0.0,
+    /** Peak fraction of light speed reached on the last transit. */
+    var lastBeta: Double = 0.0,
+    /** Clocks before the last transit, for the transit animation. */
+    var prevDay: Int = 0,
+    var prevEarthDays: Double = 0.0,
     var jumps: Int = 0,
     var phase: Phase = Phase.CRUISE,
     val power: MutableMap<Channel, Int> = mutableMapOf(
@@ -143,10 +159,14 @@ data class RunRecord(
     val planet: Planet?,
     val score: Int,
     val endedAt: Long,
+    val earthYear: Int = 0,
+    val distanceLy: Double = 0.0,
+    val shipYears: Double = 0.0,
 )
 
 fun GameState.toRecord() = RunRecord(
     runId, runNumber, planet?.name ?: "the void", ending?.title ?: "Lost", ending?.settlementName ?: "",
     alive(), day, jumps, ending?.aiFate ?: "", traits.toList(), ending?.chapters ?: emptyList(), log.toList(), planet,
     ending?.score ?: 0, endedAt,
+    Physics.earthYear(this), Physics.distanceFromSol(this), Physics.shipYears(this),
 )

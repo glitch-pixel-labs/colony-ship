@@ -9,7 +9,7 @@ import uk.saul.colonyship.audio.Cues
 import uk.saul.colonyship.data.Store
 import uk.saul.colonyship.game.*
 
-enum class Screen { INTRO, GAME, SETTINGS }
+enum class Screen { INTRO, STORY, GAME, SETTINGS }
 
 /** Holds the live run and archive, persists every change, and fires sound/haptic cues. */
 class GameController(private val store: Store, val cues: Cues) {
@@ -55,8 +55,13 @@ class GameController(private val store: Store, val cues: Cues) {
         store.runCounter = n
         val s = Engine.newGame(n, System.nanoTime() xor System.currentTimeMillis(), System.currentTimeMillis())
         state = s; store.saveCurrent(s)
-        tab = Tab.SHIP; openBook = null; screen = Screen.GAME
+        tab = Tab.SHIP; openBook = null; storyThenGame = true; screen = Screen.STORY
     }
+
+    /** True when the prologue should hand over to the console; false when replayed from settings. */
+    var storyThenGame by mutableStateOf(true)
+    fun replayStory() { storyThenGame = false; screen = Screen.STORY }
+    fun finishStory() { screen = if (storyThenGame && state != null) Screen.GAME else settingsFrom.takeIf { !storyThenGame } ?: Screen.INTRO }
 
     fun continueRun() { if (state != null) { screen = Screen.GAME } }
 
@@ -77,7 +82,7 @@ class GameController(private val store: Store, val cues: Cues) {
         if (s.phase == Phase.ENDED) { endRun(s); return }
         tab = Tab.EVENTS
         val ev = s.currentEvent?.let { Events.byId(it) }
-        if (ev != null && ev.id in setOf("storm", "breach", "cascade", "reactor", "coolant", "flare", "wave", "elders")) cues.play(Cue.ALARM) else cues.play(Cue.SELECT)
+        if (ev != null && ev.id in setOf("storm", "breach", "cascade", "reactor", "coolant", "flare", "elders", "radiator", "bearing", "fuel", "rogue")) cues.play(Cue.ALARM) else cues.play(Cue.SELECT)
     }
 
     fun choose(i: Int) {

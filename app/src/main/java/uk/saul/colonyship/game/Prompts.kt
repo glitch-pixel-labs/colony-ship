@@ -38,7 +38,9 @@ object Prompts {
         return "8-second cinematic shot, a $STYLE brought to life. Slow push-in. ${ev.title}: ${sceneFor(ev.id)} ${shipCondition(s).replaceFirstChar { it.uppercase() }}.$choice Gentle camera drift, particles and glow animate, subtle film flicker, ambient synth hum. Vertical 9:16. $NEG"
     }
 
-    private fun yl(ch: Chapter) = ch.yearLabel.lowercase().replaceFirstChar { it.uppercase() }
+    /** "YEAR 40 · 2302 AD" -> "Year 40 · 2302 AD". */
+    fun yearTitle(label: String) = label.lowercase().replaceFirstChar { it.uppercase() }.replace(" ad", " AD").replace("ship year", "Ship year")
+    private fun yl(ch: Chapter) = yearTitle(ch.yearLabel)
 
     fun chapterImage(planet: Planet?, settlement: String, ch: Chapter, traits: List<Trait>, survivors: Int): String {
         val world = planet?.let { planetLook(it) } ?: "deep interstellar space"
@@ -52,26 +54,27 @@ object Prompts {
     }
 
     private fun sceneFor(id: String): String = when (id) {
-        "storm" -> "the colony ship ploughs through a blazing micrometeoroid storm, streaks of glowing debris, impact flashes on the hull."
-        "flare" -> "a colossal coronal flare erupts from an orange star and arcs toward the ship."
-        "derelict", "sister" -> "a vast dark derelict vessel drifts in a teal nebula, a lone light glowing inside it."
-        "signal" -> "the ship's dish array turns toward a faint pulsing signal among the stars."
-        "cascade", "elders", "coolant", "dream", "stowaway", "vault" -> "inside the cryopod bay, rows of frosted sleep pods, amber warning lights blinking, cold mist on the floor."
-        "breach" -> "a hull breach venting glittering air into space from the ship's ring section."
-        "comet" -> "drones grapple glittering comet ice chunks beside the ship."
-        "core", "drift", "lonely", "party" -> "the ship's AI core, a single glowing amber-and-teal camera eye surrounded by chunky dials, in a dark chamber."
-        "rogue" -> "a dark starless rogue planet looms close as the ship swings past."
-        "giant" -> "the ship skims the banded upper clouds of a huge orange gas giant with rings."
-        "reactor", "chief", "petition" -> "the engineering deck, sparking conduits around a glowing teal fusion reactor, a crew member in a frosted jumpsuit working on it."
+        "storm", "dust" -> "the colony ship ploughs through a dense front of interstellar dust, sparks of vaporised grit flaring on its ice bow shield."
+        "flare" -> "a proton storm from a nearby flaring red dwarf washes over the ship, the hull glowing faintly, crew sheltering behind water tanks."
+        "derelict" -> "a vast dark derelict vessel drifts beside the colony ship, a single light still burning inside it."
+        "signal" -> "the ship's dish array turns toward a faint, regular radio source among the stars."
+        "cascade", "elders", "coolant", "dream", "stowaway", "vault", "will", "drift" -> "inside the cryopod bay, rows of frosted sleep pods, amber warning lights blinking, cold mist on the floor."
+        "breach", "bearing" -> "an engineer in a bulky suit welds a cracked seam on the ship's rotating ring, Milky Way behind."
+        "comet", "organics" -> "drones grapple glittering comet ice beside the slowed ship."
+        "core", "lonely", "firmware", "inspection" -> "the ship's AI core, a single glowing amber-and-teal camera eye surrounded by chunky dials, in a dark chamber."
+        "rogue" -> "a dark starless rogue planet looms close as the ship passes in the gloom."
+        "giant" -> "the ship skims past the banded clouds of a huge orange gas giant with rings."
+        "reactor", "chief", "fuel", "radiator" -> "the engineering deck, conduits around a glowing teal fusion reactor, an engineer in a frosted jumpsuit at work."
+        "petition", "record" -> "a small group of thawed crew in thermal blankets argue around a wardroom table under the AI's camera eye."
         "blight", "garden" -> "a hydroponic garden deck inside the ship, racks of plants under warm lamps."
-        "triage" -> "a medical bay with a physician tending thawing colonists beside open cryopods."
-        "record" -> "an archivist writing in a leather logbook by the glow of the AI's screens."
-        "nebula" -> "the ship enters a glowing teal ion nebula crackling with lightning."
-        "dust" -> "a haze of fine glittering interstellar dust sanding the ship's forward armour."
-        "ghost" -> "a dim empty deck with a single drone light, and a small rat silhouette."
-        "probe" -> "an ancient tiny Earth space probe with a golden plate drifts beside the giant colony ship."
-        "wave" -> "space itself ripples like water around the ship as a gravity wave passes."
+        "triage", "pregnancy", "thawsick" -> "a medical bay with a physician tending a thawed colonist beside an open cryopod."
+        "nebula" -> "the ship crosses the edge of a glowing ionised nebula."
+        "pulsar" -> "a spinning pulsar's beams sweep past the ship like a lighthouse."
+        "ghost" -> "a dim empty deck with a single drone light, and a small rodent silhouette in the beam."
+        "probe" -> "an ancient tiny Earth space probe with a golden disc drifts beside the giant colony ship."
+        "letter", "anniversary" -> "a thin blue Earth seen in memory, projected on a console screen inside the dark ship."
+        "overtaken" -> "a faster, sleeker human ship overtakes the old colony ship, its drive flare bright."
         "charts" -> "a glowing holographic star chart over a retro console, stars slightly misaligned."
-        else -> "the colony ship crossing deep space."
+        else -> "the colony ship crossing deep space at relativistic speed, stars bunched ahead and blue-shifted."
     }
 }

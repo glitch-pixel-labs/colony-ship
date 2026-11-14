@@ -34,7 +34,7 @@ import uk.saul.colonyship.audio.Cue
 import uk.saul.colonyship.game.*
 import kotlin.random.Random
 
-const val VERSION = "0.1.0"
+const val VERSION = "0.2.0"
 
 @Composable
 fun ColonyApp(g: GameController) {
@@ -42,10 +42,11 @@ fun ColonyApp(g: GameController) {
         Backdrop {
             when (g.screen) {
                 Screen.INTRO -> IntroScreen(g)
+                Screen.STORY -> StoryScreen(g)
                 Screen.SETTINGS -> SettingsScreen(g)
                 Screen.GAME -> GameShell(g)
             }
-            if (g.jumping) JumpOverlay { g.finishJump() }
+            if (g.jumping) g.state?.let { st -> TransitOverlay(st) { g.finishJump() } }
         }
     }
 }
@@ -63,7 +64,7 @@ fun GameShell(g: GameController) {
     }
     val s = g.state
     val (l1, l2) = when (g.tab) {
-        Tab.SHIP -> "SYSTEM STATUS" to (s?.let { "DAY ${it.day}" } ?: "STANDBY")
+        Tab.SHIP -> (s?.let { "${"%.1f".format(Physics.distanceFromSol(it))} LY · SOL" } ?: "SYSTEM STATUS") to (s?.let { "${Physics.earthYear(it)} AD" } ?: "STANDBY")
         Tab.EVENTS -> eventHeader(s)
         Tab.SCAN -> scanHeader(s)
         Tab.ARCHIVE -> archiveHeader(g)
@@ -79,7 +80,7 @@ fun GameShell(g: GameController) {
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).padding(horizontal = 10.dp).padding(bottom = 10.dp)) {
                 if (s == null && g.tab != Tab.ARCHIVE) {
                     Panel {
-                        AiQuote("No voyage in progress. One thousand sleepers are waiting for someone to press the big button.", "SHIP AI")
+                        AiQuote("No voyage in progress. One thousand sleepers are waiting at Earth–Moon L1 for a decision.", "SHIP AI")
                         Spacer(Modifier.height(10.dp))
                         ConsoleKey("BEGIN A NEW VOYAGE", Modifier.fillMaxWidth(), KeyStyle.ORANGE) { g.newRun() }
                     }
@@ -130,13 +131,13 @@ fun IntroScreen(g: GameController) {
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) { listOf(C.mustard, C.orange, C.burnt, C.teal).forEach { Box(Modifier.size(46.dp, 5.dp).background(it, RoundedCornerShape(2.dp))) } }
             Spacer(Modifier.height(10.dp))
-            Text("ONE THOUSAND SLEEPERS · ONE TIRED MACHINE", style = label(11.sp, C.cream, 0.18f), textAlign = TextAlign.Center)
+            Text("ONE THOUSAND SLEEPERS · ONE MACHINE · NO WAY BACK", style = label(11.sp, C.cream, 0.18f), textAlign = TextAlign.Center)
             Spacer(Modifier.weight(1f))
             val s = g.state
             ConsoleKey("NEW RUN", Modifier.fillMaxWidth(), KeyStyle.ORANGE, height = 50.dp, textSize = 18, cueType = Cue.SELECT) { if (g.hasRun) confirmNew = true else g.newRun() }
             Spacer(Modifier.height(8.dp))
             ConsoleKey("CONTINUE", Modifier.fillMaxWidth(), KeyStyle.TEAL, height = 46.dp, textSize = 16, enabled = g.hasRun,
-                sub = s?.takeIf { g.hasRun }?.let { "RUN ${it.runNumber.toString().padStart(2, '0')} · DAY ${it.day} · ${it.alive()} ALIVE" } ?: "NO VOYAGE IN PROGRESS") { g.continueRun() }
+                sub = s?.takeIf { g.hasRun }?.let { "RUN ${it.runNumber.toString().padStart(2, '0')} · ${Physics.earthYear(it)} AD · ${it.alive()} ALIVE" } ?: "NO VOYAGE IN PROGRESS") { g.continueRun() }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ConsoleKey("ARCHIVE", Modifier.weight(1f), KeyStyle.DARK, height = 42.dp, sub = "${g.archive.size} HISTORIES") { g.tab = Tab.ARCHIVE; g.openBook = null; g.screen = Screen.GAME }
@@ -149,7 +150,7 @@ fun IntroScreen(g: GameController) {
     if (confirmNew) Dialog(onDismissRequest = { confirmNew = false }) {
         Panel {
             SectionTitle("!!", "ABANDON CURRENT VOYAGE?")
-            AiQuote("Starting again means the current run is gone. The sleepers won’t know. I will.", null, eye = 36.dp, size = 13)
+            AiQuote("Starting again means this voyage ends here. The sleepers will never know. I will keep the record.", null, eye = 36.dp, size = 13)
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ConsoleKey("KEEP IT", Modifier.weight(1f), KeyStyle.DARK) { confirmNew = false }
@@ -168,21 +169,21 @@ fun SettingsScreen(g: GameController) {
             SectionTitle("01", "SOUND")
             VolumeRow("MUSIC VOLUME", "Original ambient score", g.musicVolume) { g.setMusic(it) }
             Spacer(Modifier.height(8.dp))
-            VolumeRow("SOUND EFFECTS", "Clicks, alarms, jumps", g.sfxVolume) { g.setSfx(it); }
+            VolumeRow("SOUND EFFECTS", "Clicks, alarms, burns", g.sfxVolume) { g.setSfx(it); }
         }
         Panel {
             SectionTitle("02", "HAPTICS", if (g.haptics) "ON" else "OFF", if (g.haptics) C.glow else C.muted)
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("VIBRATION FEEDBACK", style = label(12.sp, C.cream))
-                    Text("Ticks on controls, rumbles on jumps, thuds on impacts and pod losses.", style = body(11.sp, C.muted))
+                    Text("Ticks on controls, rumbles on drive burns, thuds on impacts and pod losses.", style = body(11.sp, C.muted))
                 }
                 Toggle(g.haptics) { g.toggleHaptics(it) }
             }
             Spacer(Modifier.height(8.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ConsoleKey("TEST IMPACT", Modifier.weight(1f), KeyStyle.DARK, height = 34.dp, textSize = 11, cueType = Cue.IMPACT) {}
-                ConsoleKey("TEST JUMP", Modifier.weight(1f), KeyStyle.DARK, height = 34.dp, textSize = 11, cueType = Cue.JUMP) {}
+                ConsoleKey("TEST BURN", Modifier.weight(1f), KeyStyle.DARK, height = 34.dp, textSize = 11, cueType = Cue.JUMP) {}
             }
         }
         Panel {
@@ -192,6 +193,8 @@ fun SettingsScreen(g: GameController) {
                 Spacer(Modifier.height(8.dp))
             }
             ConsoleKey("TITLE SCREEN", Modifier.fillMaxWidth(), KeyStyle.DARK) { g.screen = Screen.INTRO }
+            Spacer(Modifier.height(8.dp))
+            ConsoleKey("REPLAY THE PROLOGUE", Modifier.fillMaxWidth(), KeyStyle.DARK) { g.replayStory() }
             Spacer(Modifier.height(8.dp))
             Text("Your run saves automatically after every decision.", style = body(11.sp, C.muted))
         }
@@ -221,30 +224,3 @@ fun Toggle(on: Boolean, onChange: (Boolean) -> Unit) {
     }
 }
 
-/** Warp-streak animation played while the jump drive runs. */
-@Composable
-fun JumpOverlay(onDone: () -> Unit) {
-    val progress = remember { Animatable(0f) }
-    LaunchedEffect(Unit) { progress.animateTo(1f, tween(2400, easing = LinearEasing)); delay(100); onDone() }
-    val streaks = remember { val r = Random(11); List(140) { Triple(r.nextFloat() * 6.283f, r.nextFloat(), r.nextFloat()) } }
-    Box(Modifier.fillMaxSize().background(Color(0xF0050302)).clickable(enabled = false) {}) {
-        Canvas(Modifier.fillMaxSize()) {
-            val p = progress.value
-            val c = Offset(size.width / 2, size.height / 2)
-            val speed = if (p < 0.7f) p / 0.7f else 1f - (p - 0.7f) / 0.3f * 0.6f
-            streaks.forEach { (a, d, col) ->
-                val dist = ((d + p * 2.2f) % 1f)
-                val r0 = dist * size.maxDimension * 0.7f
-                val len = 8f + speed * 160f * dist
-                val dir = Offset(kotlin.math.cos(a), kotlin.math.sin(a))
-                val color = if (col < 0.6f) C.glow else if (col < 0.85f) C.nix else Color.White
-                drawLine(color.copy(alpha = (0.3f + dist * 0.7f) * (1f - p * 0.3f)), c + dir * r0, c + dir * (r0 + len), 1.5f + dist * 2.5f, StrokeCap.Round)
-            }
-            drawCircle(Brush.radialGradient(listOf(Color.White.copy(alpha = 0.6f * speed), Color.Transparent), center = c, radius = 120f), 120f, c)
-        }
-        Column(Modifier.align(Alignment.Center), horizontalAlignment = Alignment.CenterHorizontally) {
-            Text("JUMP DRIVE ENGAGED", style = vfd(26.sp))
-            Text("FOLDING SPACE · PLEASE REMAIN ASLEEP", style = label(10.sp, C.cream, 0.2f))
-        }
-    }
-}

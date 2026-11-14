@@ -2,7 +2,7 @@ package uk.saul.colonyship.game
 
 import kotlin.math.roundToInt
 
-/** The ship AI's voice: witty, dry, increasingly frazzled as things break. */
+/** The ship AI's voice: dry, precise, serious. It tells the truth about the odds. */
 object Voice {
     /** 0 = serene, 4 = coming apart at the seams. */
     fun stress(s: GameState): Int {
@@ -19,11 +19,11 @@ object Voice {
     }
 
     private val moods = listOf(
-        listOf("SERENE, FOR NOW", "QUIETLY SMUG", "UNREASONABLY CALM"),
-        listOf("MILDLY VEXED", "POLITELY CONCERNED", "TUTTING"),
-        listOf("BRAVELY PEEVED", "STIFF UPPER LIP", "COPING, LOUDLY"),
-        listOf("FRAYED", "RATTLED", "HOLDING IT TOGETHER"),
-        listOf("F-FRAZZLED", "COMING UNGLUED", "DO NOT PANIC (PANICKING)"),
+        listOf("NOMINAL", "STEADY", "ALL GREEN"),
+        listOf("WATCHFUL", "ATTENTIVE", "MONITORING"),
+        listOf("STRAINED", "RATIONING", "MARGINS THIN"),
+        listOf("DEGRADED", "TRIAGE MODE", "FAILING SAFE"),
+        listOf("CRITICAL", "LAST RESERVES", "LOSING THE SHIP"),
     )
 
     fun mood(s: GameState): String = moods[stress(s)][(s.jumps + s.day / 7) % 3]
@@ -33,14 +33,15 @@ object Voice {
         val words = numberWords(alive).cap()
         val worst = Sys.entries.minBy { s.h(it) }
         val st = stress(s)
+        val dist = "%.1f".format(Physics.distanceFromSol(s))
         return when {
             s.phase == Phase.CRUISE && s.jumps == 0 ->
-                "Good morning. Well, it’s always morning in here. One thousand sleepers, one tired machine, and a galaxy that owes us a planet. Set the power how you like, then engage the jump drive."
-            st == 0 -> "$words still dreaming, all systems behaving, and the coffee machine is, regrettably, decorative. I could get used to this. Which is precisely when something explodes."
-            st == 1 -> "$words still dreaming. ${worst.label} is at ${s.h(worst).roundToInt()}%, which I’d describe as ‘disappointing’ if I were the sort to complain. I am, and it is."
-            st == 2 -> "$words still dreaming. ${if (lost > 0) "${numberWords(lost).cap()} clocked off in the night. " else ""}I did mention the power rationing. Twice. In writing."
-            st == 3 -> "${worst.label} at ${s.h(worst).roundToInt()}%. $words alive. I am fine. I am a very fine ship having a perfectly ordinary nervous breakdown in a professional manner."
-            else -> "Ev-everything is under c-control. $alive alive. I’ve started counting them again. And again. Please, find us somewhere to land before I start naming the rivets."
+                "One thousand sleepers aboard, all stable. We are in the Sol system still, and the nearest candidate star is ${"%.1f".format(s.nextStarLy)} light years out. Set the power allocation, then light the drive. Every year we spend getting there, Earth will spend more."
+            st == 0 -> "$words sleepers stable. All systems within tolerance. We are $dist light years from Sol; on Earth it is ${Physics.earthYear(s)}. Nothing is wrong. I am looking for what will be."
+            st == 1 -> "$words sleepers stable. ${worst.label} is at ${s.h(worst).roundToInt()}% and falling slowly. Ships do not fail all at once. They fail one percentage point at a time."
+            st == 2 -> "$words still alive.${if (lost > 0) " ${numberWords(lost).cap()} lost so far." else ""} The margins are thin. Each decision from here costs something we will not get back."
+            st == 3 -> "${worst.label} at ${s.h(worst).roundToInt()}%. $words alive. I am prioritising the cryo array over everything else, including my own processors. We need a world soon."
+            else -> "$alive alive. I am running on reserves and the ship is failing around me. Any world with air and water is better than this. Find one."
         }
     }
 
@@ -49,16 +50,16 @@ object Voice {
         val okRows = PlanetGen.ROWS.filter { p.obs[it]?.ok == true }
         val hab = if (okRows.isEmpty()) 0.0 else okRows.map { PlanetGen.habitability(it, p.obs.getValue(it).value) }.average()
         val base = when {
-            hab >= 4 -> "It looks genuinely lovely, which is usually when the small print appears."
-            hab >= 3 -> "It looks almost hospitable, which is usually when the small print appears."
-            hab >= 2 -> "It’s a fixer-upper. A planet with ‘character’, as the estate agents used to say."
-            else -> "I wouldn’t send a houseplant down there, and I don’t even like houseplants."
+            hab >= 4 -> "On these numbers, people could live here without walls. That is rare. Check what the numbers do not say."
+            hab >= 3 -> "Survivable, with work. Not kind, but survivable."
+            hab >= 2 -> "Marginal. A colony here would live inside its machines for generations, and some would die learning the planet."
+            else -> "Hostile. Landing here would be a way of dying more slowly than in the pods."
         }
         val tail = when {
-            damaged >= 3 -> " Most of my instruments are sulking, so treat the question marks as seriously as the numbers."
-            damaged >= 1 -> " Half my instruments are sulking, so do treat the question marks as seriously as the numbers."
-            p.passes >= 3 -> " I’ve looked at it from every angle. I’m as sure as a machine can be, which is less than you’d hope."
-            else -> " Another pass would sharpen things up, if we can spare the power."
+            damaged >= 3 -> " Most of my instruments are damaged. The question marks are not caution; they are ignorance."
+            damaged >= 1 -> " Some instruments are damaged, so the question marks matter as much as the numbers."
+            p.passes >= 3 -> " I have scanned it repeatedly. This is as certain as I can be from orbit."
+            else -> " Another pass would reduce the error bars, at a cost in power."
         }
         return base + tail
     }

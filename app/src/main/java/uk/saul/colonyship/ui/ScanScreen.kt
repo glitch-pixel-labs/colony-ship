@@ -67,12 +67,12 @@ fun ScanScreen(g: GameController, s: GameState) {
                 Phase.EVENT -> "We’re between stars and something needs your attention first. See the Events screen."
                 Phase.OUTCOME -> "Nearly there. Continue to the next star and I’ll start the survey."
                 Phase.ENDED -> "The voyage is over. The survey drones are, I assume, rusting gently somewhere."
-                else -> "Nothing to survey in deep space but more deep space. Engage the jump drive and I’ll find us a candidate."
+                else -> "Nothing to survey in interstellar space. Light the drive and I will take us to the next candidate star."
             }, "SHIP AI · SURVEY")
             Spacer(Modifier.height(10.dp))
             when (s.phase) {
                 Phase.EVENT -> ConsoleKey("OPEN EVENTS", Modifier.fillMaxWidth(), KeyStyle.ON) { g.tab = Tab.EVENTS }
-                Phase.OUTCOME -> ConsoleKey("CONTINUE TO NEXT STAR", Modifier.fillMaxWidth(), KeyStyle.TEAL) { g.arrive() }
+                Phase.OUTCOME -> ConsoleKey("BRAKE INTO THE NEXT SYSTEM", Modifier.fillMaxWidth(), KeyStyle.TEAL) { g.arrive() }
                 Phase.CRUISE -> ConsoleKey("GO TO SHIP CONSOLE", Modifier.fillMaxWidth(), KeyStyle.ORANGE) { g.tab = Tab.SHIP }
                 else -> {}
             }
@@ -113,14 +113,14 @@ fun ScanScreen(g: GameController, s: GameState) {
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             ConsoleKey("SETTLE", Modifier.weight(1f), KeyStyle.TEAL, height = 62.dp, textSize = 22, sub = "WAKE ALL ${s.alive()} COLONISTS", cueType = Cue.SELECT) { confirm = true }
-            ConsoleKey("KEEP SEARCHING", Modifier.weight(1f), KeyStyle.ORANGE, height = 62.dp, textSize = 17, sub = "−${Engine.JUMP_COST.roundToInt()} POWER · NEXT STAR ${"%.1f".format(s.nextStarLy)} LY", cueType = Cue.SELECT) { g.jump() }
+            ConsoleKey("KEEP SEARCHING", Modifier.weight(1f), KeyStyle.ORANGE, height = 62.dp, textSize = 17, sub = "NEXT STAR ${"%.1f".format(s.nextStarLy)} LY · +${"%.1f".format(Engine.plannedTransit(s).earthYears)} EARTH YRS", cueType = Cue.SELECT) { g.jump() }
         }
         Spacer(Modifier.height(4.dp))
     }
     if (confirm) Dialog(onDismissRequest = { confirm = false }) {
         Panel {
             SectionTitle("!!", "SETTLE ON ${p.name.uppercase()}?")
-            AiQuote("This is it, then. Once I wake them there’s no going back, and the ship won’t fly again. ${if (p.obs.values.any { !it.ok }) "Some readings are still question marks. " else ""}Shall I start the thaw?", null, eye = 36.dp, size = 13)
+            AiQuote("Once I begin the thaw there is no going back. The ship will be broken up for the colony and will never fly again. ${if (p.obs.values.any { !it.ok }) "Some readings are still question marks. " else ""}Shall I start the thaw?", null, eye = 36.dp, size = 13)
             Spacer(Modifier.height(10.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ConsoleKey("NOT YET", Modifier.weight(1f), KeyStyle.DARK) { confirm = false }

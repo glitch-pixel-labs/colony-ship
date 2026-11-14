@@ -4,6 +4,7 @@ import org.junit.Assert.*
 import org.junit.Test
 import uk.saul.colonyship.game.*
 import kotlin.random.Random
+import uk.saul.colonyship.ui.PROLOGUE_ART
 
 class GameLogicTest {
     private fun fresh(seed: Long = 42L) = Engine.newGame(1, seed, 0L)
@@ -26,8 +27,8 @@ class GameLogicTest {
         assertEquals(0, s.power[Channel.SCAN])
     }
 
-    @Test fun atLeastThirtyEventsAllWithTwoOrThreeChoices() {
-        assertTrue("events=${Events.all.size}", Events.all.size >= 30)
+    @Test fun atLeastFortyEventsAllWithTwoOrThreeChoices() {
+        assertTrue("events=${Events.all.size}", Events.all.size >= 40)
         assertEquals(Events.all.size, Events.all.map { it.id }.toSet().size)
         val all = fresh(); all.day = 2000
         SPECIALISTS.forEach { all.awake += it.id }
@@ -62,7 +63,12 @@ class GameLogicTest {
     @Test fun jumpAdvancesTimeAndQueuesEvent() {
         val s = Engine.jump(fresh())
         assertEquals(1, s.jumps)
-        assertTrue(s.day >= 20)
+        assertTrue(s.day >= 200)
+        // Relativistic: Earth ages more than the ship, and we are light years from Sol.
+        assertTrue("earth ${s.earthDays} ship ${s.day}", s.earthDays > s.day * 1.1)
+        assertTrue(Physics.distanceFromSol(s) > 3.0)
+        assertTrue(Physics.earthYear(s) > Physics.LAUNCH_YEAR)
+        assertTrue(s.lastBeta in 0.3..0.95)
         assertEquals(Phase.EVENT, s.phase)
         assertNotNull(s.currentEvent)
         assertTrue(s.air < 100.0)
@@ -170,5 +176,52 @@ class GameLogicTest {
         Sys.entries.forEach { s.health[it] = 10.0 }
         assertEquals(4, Voice.stress(s))
         assertEquals("nine hundred and eighty-seven", Voice.numberWords(987))
+    }
+
+    @Test fun relativisticTransitIsPhysical() {
+        val t = Physics.transit(6.0, 0.8)
+        assertEquals(0.8, t.beta, 1e-9)
+        assertTrue("earth ${t.earthYears} must exceed light time", t.earthYears > 6.0)
+        assertTrue("ship ${t.shipYears} < earth ${t.earthYears}", t.shipYears < t.earthYears)
+        // Coast-phase dilation is γ = 1/0.6
+        assertEquals(1.0 / 0.6, t.gamma, 1e-9)
+        // A short hop never reaches cruise speed.
+        val short = Physics.transit(0.3, 0.9)
+        assertTrue(short.beta < 0.9)
+        // Slower ships take longer in both frames.
+        val slow = Physics.transit(6.0, 0.4)
+        assertTrue(slow.earthYears > t.earthYears && slow.shipYears > t.shipYears)
+    }
+
+    @Test fun historyArtMatchesPlanetAndNeverRepeats() {
+        fun art(p: Planet, trust: Int = 3): List<String> {
+            val s = fresh(); s.planet = p; s.trust = trust; s.traits += Trait("archive", "A", "a", 1)
+            return Engine.settle(s, 1L).ending!!.chapters.map { it.art }
+        }
+        val ocean = art(Planet("Thalassa B", 6.0, 1, 4, 1.0, 16, 94, 3, 2, listOf("Floating kelp mats"), 0.5f))
+        assertEquals("land_ocean", ocean[0])
+        val ice = art(Planet("Rime C", 6.0, 1, 3, 0.9, -45, 8, 4, 1, listOf("Glacier belts"), 0.5f))
+        assertEquals("land_ice", ice[0])
+        val desert = art(Planet("Ochre D", 6.0, 0, 4, 0.95, 28, 4, 4, 1, listOf("Rust deserts"), 0.5f))
+        assertEquals("land_desert", desert[0])
+        val toxic = art(Planet("Murk B", 6.0, 0, 2, 1.0, 12, 30, 5, 0, listOf("Canyon systems"), 0.5f))
+        assertEquals("land_toxic", toxic[0])
+        // Every plate in a book is distinct, and every key resolves to a bundled painting.
+        val drawables = R.drawable::class.java.fields.map { it.name }.toSet()
+        for (seed in 1L..200L) {
+            val s = fresh(seed); s.planet = PlanetGen.generate(Random(seed), (seed % 6).toInt(), 8.0); s.trust = (seed % 9).toInt() - 4
+            if (seed % 3 == 0L) s.traits += Trait("heralds", "H", "h", 1)
+            val e = Engine.settle(s, 1L).ending!!
+            val keys = e.chapters.map { it.art }
+            assertEquals("seed $seed $keys", keys.size, keys.toSet().size)
+            keys.forEach { assertTrue("missing art_$it", "art_$it" in drawables) }
+        }
+        Events.all.forEach { assertTrue("missing art_${it.art} for ${it.id}", "art_${it.art}" in drawables) }
+        PROLOGUE_ART.forEach { assertTrue("art_$it" in drawables) }
+    }
+
+    @Test fun writingAvoidsOldJokesAndAmericanSpelling() {
+        val text = Events.all.joinToString(" ") { e -> e.title + " " + e.choices.joinToString(" ") { it.title + " " + it.desc } }
+        listOf("jump drive", "warp", "Warp", "color", "center ", "meter ", "lol").forEach { assertFalse("found '$it'", text.contains(it)) }
     }
 }

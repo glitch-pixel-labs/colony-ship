@@ -69,7 +69,8 @@ class Fx(val s: GameState, val r: Random) {
     fun sleep(id: String) { if (s.awake.remove(id)) deltas += "−1 AWAKE" }
     fun awake(id: String) = id in s.awake
     fun chance(p: Double) = r.nextDouble() < p
-    fun days(d: Int) { s.day = max(0, s.day + d); if (d != 0) deltas += "${if (d > 0) "+" else "−"}${kotlin.math.abs(d)} DAYS" }
+    /** Time passes equally on both clocks when the ship is not moving relativistically. */
+    fun days(d: Int) { s.day = max(0, s.day + d); s.earthDays = max(0.0, s.earthDays + d); if (d != 0) deltas += "${if (d > 0) "+" else "−"}${kotlin.math.abs(d)} DAYS" }
 
     /** Stable pods start failing. */
     fun failPods(n: Int) {
@@ -104,7 +105,7 @@ object Engine {
         val s = GameState(runId = "run-$seed", runNumber = runNumber, seed = seed, startedAt = now)
         val r = Random(seed)
         s.day = 0
-        s.nextStarLy = 5.0 + r.nextDouble() * 6
+        s.nextStarLy = 4.2 + r.nextDouble() * 4.5
         // A few pods have already had a rough departure.
         Fx(s, r).failPods(2 + r.nextInt(4))
         s.lastJumpReport = emptyList()
@@ -122,33 +123,43 @@ object Engine {
     fun efficiency(s: GameState, ch: Channel, sys: Sys): Double =
         (s.h(sys) / 100.0) * min(1.3, (s.power[ch] ?: 0) / ch.need.toDouble())
 
-    /** Estimated days of air/water left at current burn. */
-    fun daysLeft(s: GameState): Int {
+    /** Estimated number of further transits the air and water will last at the current settings. */
+    fun hopsLeft(s: GameState): Int {
         val lifeEff = efficiency(s, Channel.LIFE, Sys.LIFE)
         val perJumpAir = (2.2 + 1.8 * s.awake.size) * (1.7 - min(1.2, lifeEff))
         val perJumpWater = (1.8 + 1.2 * s.awake.size) * (1.7 - min(1.2, lifeEff))
-        val jumpDays = travelDays(s)
-        val j = min(s.air / max(0.1, perJumpAir), s.water / max(0.1, perJumpWater))
-        return (j * jumpDays).roundToInt()
+        return min(s.air / max(0.1, perJumpAir), s.water / max(0.1, perJumpWater)).toInt()
     }
 
-    fun travelDays(s: GameState): Int {
-        val eng = 0.45 + 0.55 * min(1.25, efficiency(s, Channel.ENGINE, Sys.ENGINE))
-        val wren = if ("wren" in s.awake) 0.85 else 1.0
-        return max(20, (s.nextStarLy * 9.0 / eng * wren).roundToInt())
+    /** Cruise speed as a fraction of c. Healthy, well-fed engines reach about 0.82c; a pilot trims the burn. */
+    fun cruiseBeta(s: GameState): Double {
+        val eng = min(1.15, efficiency(s, Channel.ENGINE, Sys.ENGINE))
+        val wren = if ("wren" in s.awake) 0.04 else 0.0
+        return (0.40 + 0.42 * eng + wren).coerceIn(0.30, 0.90)
     }
 
-    /** Engage the jump drive: simulate the trip, then queue an event. */
+    fun plannedTransit(s: GameState): Physics.Transit = Physics.transit(s.nextStarLy, cruiseBeta(s))
+
+    /** Ship-days for the next transit (kept for UI and tests). */
+    fun travelDays(s: GameState): Int = plannedTransit(s).shipDays
+
+    /** Light the drive: simulate the relativistic transit, then queue an event. */
     fun jump(src: GameState): GameState {
         val s = src.deepCopy()
         val r = rng(s, 1)
         val fx = Fx(s, r)
         s.lostToday = 0
         fx.reserve(-JUMP_COST)
-        val days = travelDays(s)
-        s.day += days
+        val t = plannedTransit(s)
+        s.prevDay = s.day; s.prevEarthDays = s.earthDays
+        s.day += t.shipDays
+        s.earthDays += t.earthDays
+        s.lastBeta = t.beta
+        Physics.advance(s, t.distanceLy, r)
         s.jumps += 1
-        fx.deltas += "+$days DAYS"
+        fx.deltas += "%.2fc PEAK".format(t.beta)
+        fx.deltas += "+%.1f SHIP YRS".format(t.shipYears)
+        fx.deltas += "+%.1f EARTH YRS".format(t.earthYears)
 
         // Reactor surplus trickles into the reserve.
         val surplus = (POWER_BUDGET - s.drawn()).coerceAtLeast(0)
@@ -172,13 +183,13 @@ object Engine {
             fx.savePods((repairPts / 5).toInt())
         }
 
-        // Wear and tear, worse when under-powered.
+        // Wear and tear, worse when under-powered. Faster transits mean harder dust impacts on the bow.
         val map = mapOf(Sys.LIFE to Channel.LIFE, Sys.SCAN to Channel.SCAN, Sys.SHIELD to Channel.SHIELD, Sys.ENGINE to Channel.ENGINE)
         for (sys in Sys.entries) {
             var wear = 0.6 + r.nextDouble() * 2.2
             map[sys]?.let { ch -> val p = s.power[ch] ?: 0; if (p < ch.need) wear += (ch.need - p) * 0.4 }
             if (sys == Sys.CRYO && lifeEff < 0.7) wear += (0.7 - lifeEff) * 10
-            if (sys == Sys.HULL) wear *= (1.3 - fx.shieldFactor())
+            if (sys == Sys.HULL) wear *= (1.3 - fx.shieldFactor()) * (0.7 + 0.5 * t.beta)
             s.health[sys] = (s.h(sys) - wear).coerceIn(0.0, 100.0)
         }
 
@@ -205,7 +216,8 @@ object Engine {
         s.lastOutcome = null
         s.lastDeltas = emptyList()
         s.phase = Phase.EVENT
-        s.log += LogEntry(id = "e${s.jumps}-${ev.id}", day = s.day, eventId = ev.id, title = ev.title, kicker = ev.kicker, art = ev.art)
+        s.log += LogEntry(id = "e${s.jumps}-${ev.id}", day = s.day, eventId = ev.id, title = ev.title, kicker = ev.kicker, art = ev.art,
+            earthYear = Physics.earthYear(s), ly = Physics.distanceFromSol(s))
         return s
     }
 
@@ -241,9 +253,12 @@ object Engine {
         val s = src.deepCopy()
         val r = rng(s, 3)
         s.currentEvent = null
-        val p = PlanetGen.generate(r, s.jumps, s.nextStarLy)
+        val p = PlanetGen.generate(r, s.jumps, Physics.distanceFromSol(s))
+        // Braking into orbit and the first survey take weeks, at sub-relativistic speed.
+        val settleIn = 30 + r.nextInt(40)
+        s.day += settleIn; s.earthDays += settleIn
         s.planet = scanPass(s, p, r)
-        s.nextStarLy = 4.0 + r.nextDouble() * 8
+        s.nextStarLy = 4.0 + r.nextDouble() * 7
         s.phase = Phase.ORBIT
         return s
     }
@@ -280,6 +295,7 @@ object Engine {
         val p = s.planet ?: return s
         if (p.passes >= MAX_PASSES) return s
         Fx(s, rng(s, 4)).reserve(-RESCAN_COST)
+        s.day += 6; s.earthDays += 6
         s.planet = scanPass(s, p, rng(s, 5 + p.passes))
         return s
     }

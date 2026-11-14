@@ -16,11 +16,10 @@ enum class Cue { TICK, BUTTON, SELECT, IMPACT, ALARM, POD_LOSS, JUMP, SCAN, SETT
 /** Sound effects, ambient music and haptics in one place, with graceful fallbacks. */
 class Cues(private val ctx: Context) {
     var musicVolume = 0.6f
-        set(v) { field = v; try { music?.setVolume(v * 0.9f, v * 0.9f) } catch (_: Exception) {} }
+        set(v) { field = v; looper.volume = v * 0.9f }
     var sfxVolume = 0.8f
     var hapticsOn = true
 
-    private var music: MediaPlayer? = null
     private val pool: SoundPool? = try {
         SoundPool.Builder().setMaxStreams(6).setAudioAttributes(
             AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build()
@@ -42,16 +41,13 @@ class Cues(private val ctx: Context) {
         }
     }
 
-    fun startMusic() {
-        try {
-            if (music == null) {
-                music = MediaPlayer.create(ctx, R.raw.music_ambient)?.apply { isLooping = true; setVolume(musicVolume * 0.9f, musicVolume * 0.9f) }
-            }
-            if (music?.isPlaying == false) music?.start()
-        } catch (e: Exception) { Log.w("Cues", "music", e) }
-    }
-    fun pauseMusic() { try { music?.takeIf { it.isPlaying }?.pause() } catch (_: Exception) {} }
-    fun release() { try { music?.release(); music = null; pool?.release() } catch (_: Exception) {} }
+    private val looper = MusicLooper(ctx, R.raw.music_ambient)
+
+    /** Fade the score in (on launch and on returning to the app). */
+    fun startMusic() = looper.start()
+    /** Fade the score out, then pause (on leaving the app). */
+    fun pauseMusic() = looper.pause()
+    fun release() { looper.release(); try { pool?.release() } catch (_: Exception) {} }
 
     fun play(c: Cue) {
         val now = System.currentTimeMillis()

@@ -72,7 +72,7 @@ object PlanetGen {
     }
 
     val ATM_NAMES = listOf("None to speak of", "Corrosive soup", "Thin, toxic", "Thin, breathable", "Breathable", "Dense, breathable")
-    val ATM_SUBS = listOf("Hard vacuum, more or less", "Sulphuric. Do not inhale", "Masks forever", "Altitude-sickness at sea level", "Nitrogen, oxygen, nothing rude", "High oxygen · faint sulphur")
+    val ATM_SUBS = listOf("Trace gas · effectively vacuum", "Sulphur and chlorine compounds", "Low O₂ · CO₂ rich · lethal", "Low pressure · O₂ 14%", "N₂/O₂ · near Earth-normal", "High pressure · O₂ 26%")
     val RES_NAMES = listOf("Barren", "Poor", "Modest", "Good", "Rich", "Abundant")
     val LIFE_NAMES = listOf("None detected", "Microbial mats", "Plant analogues", "Animal life", "Signs of others")
 
@@ -95,13 +95,13 @@ object PlanetGen {
         val (main, sub) = when (row) {
             "ATMOSPHERE" -> { val i = v.roundToInt().coerceIn(0, 5); ATM_NAMES[i] + q to ATM_SUBS[i] }
             "GRAVITY" -> "%.2f g%s".format(v.coerceIn(0.1, 3.0), q) to when {
-                v < 0.6 -> "Mind the bounce"; v < 0.85 -> "Knees will thank us"; v < 1.15 -> "Pleasingly familiar"; v < 1.5 -> "Everyone feels heavier"; else -> "Crushing, frankly" }
+                v < 0.6 -> "Bone and muscle loss over decades"; v < 0.85 -> "Light · adaptable"; v < 1.15 -> "Near Earth-normal"; v < 1.5 -> "Cardiac strain · long-term"; else -> "Debilitating · lethal for the frail" }
             "TEMPERATURE" -> "${v.roundToInt()}°C mean$q" to when {
-                v < -40 -> "Ice age, permanently"; v < 0 -> "Bracing"; v < 30 -> "Shirt-sleeve weather"; v < 55 -> "Hot. Very hot."; else -> "Oven-adjacent" }
+                v < -40 -> "Cryogenic · sealed habitats only"; v < 0 -> "Cold · farmable near the equator"; v < 30 -> "Temperate"; v < 55 -> "Heat stress · nocturnal working"; else -> "Lethal heat" }
             "WATER" -> { val w = v.coerceIn(0.0, 100.0).roundToInt()
                 (when { w < 2 -> "Bone dry"; w < 12 -> "Ice caps, scattered lakes"; w < 40 -> "Inland seas"; w < 80 -> "Wide shallow seas"; else -> "Global ocean" } + q) to "$w% surface coverage" }
-            "RESOURCES" -> { val i = v.roundToInt().coerceIn(0, 5); RES_NAMES[i] + q to listOf("Rock, mostly", "Thin seams", "Workable ores", "Good metals, some fissiles", "Generous crust", "A prospector's daydream")[i] }
-            "LIFE SIGNS" -> { val i = v.roundToInt().coerceIn(0, 4); LIFE_NAMES[i] + q to listOf("Sterile, as far as I can tell", "Something larger? Unclear", "Green-ish, chlorophyll-adjacent", "Things that move. And eat.", "Patterns too regular to be weather")[i] }
+            "RESOURCES" -> { val i = v.roundToInt().coerceIn(0, 5); RES_NAMES[i] + q to listOf("Silicates only", "Thin seams", "Workable iron and copper", "Good metals · some fissiles", "Rich metals and fissiles", "Exceptional · surface deposits")[i] }
+            "LIFE SIGNS" -> { val i = v.roundToInt().coerceIn(0, 4); LIFE_NAMES[i] + q to listOf("No biosignatures", "Biofilms · O₂ disequilibrium", "Photosynthetic analogues", "Motile multicellular life", "Structured emissions · night side")[i] }
             else -> p.features.take(2).joinToString(", ") to (p.features.drop(2).firstOrNull() ?: "${p.moons} moon${if (p.moons == 1) "" else "s"}")
         }
         val bars = habitability(row, v)

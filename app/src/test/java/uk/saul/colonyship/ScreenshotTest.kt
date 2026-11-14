@@ -44,7 +44,6 @@ class ScreenshotTest {
         s.health[Sys.SCAN] = 44.0; s.health[Sys.SHIELD] = 67.0; s.health[Sys.ENGINE] = 80.0; s.health[Sys.HULL] = 74.0
         s.health[Sys.LIFE] = 91.0; s.health[Sys.CRYO] = 88.0
         s.air = 71.0; s.food = 84.0; s.water = 77.0; s.spares = 41.0; s.reserve = 36.0
-        s.day = 847
         s.power[Channel.LIFE] = 32; s.power[Channel.SCAN] = 14; s.power[Channel.SHIELD] = 22; s.power[Channel.ENGINE] = 18; s.power[Channel.REPAIR] = 8
         val c = s.pods.toCharArray(); val r = Random(4)
         for (i in c.indices) c[i] = 'S'
@@ -69,7 +68,7 @@ class ScreenshotTest {
         val g = controller(); val s = midRun()
         s.phase = Phase.EVENT; s.currentEvent = "storm"
         s.awake.clear()
-        s.log += LogEntry("e99-storm", s.day, "storm", "Micrometeoroid Storm", "UNSCHEDULED WEATHER · OUTER HULL", "storm")
+        s.currentEvent = "derelict"; s.log += LogEntry("e99-derelict", s.day, "derelict", "The Derelict", "CONTACT", "derelict", earthYear = Physics.earthYear(s))
         g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.EVENTS; show(g, "02-event")
     }
 
@@ -97,7 +96,7 @@ class ScreenshotTest {
         if (withPicture) {
             val ctx = rule.activity.applicationContext
             val f = File(ctx.filesDir, "pictures").apply { mkdirs() }.let { File(it, "test-ch2.jpg") }
-            ctx.resources.openRawResource(R.drawable.art_schism).use { i -> f.outputStream().use { i.copyTo(it) } }
+            ctx.resources.openRawResource(R.drawable.art_mid_town).use { i -> f.outputStream().use { i.copyTo(it) } }
             rec = rec.copy(chapters = rec.chapters.mapIndexed { i, c -> if (i == 1) c.copy(imagePath = f.absolutePath) else c })
         }
         return rec
@@ -133,8 +132,8 @@ class ScreenshotTest {
 
     @Test fun s09_outcome() {
         val g = controller(); var s = midRun()
-        s.phase = Phase.EVENT; s.currentEvent = "derelict"
-        s.log += LogEntry("e98-derelict", s.day, "derelict", "The Derelict", "CONTACT", "derelict")
+        s.phase = Phase.EVENT; s.currentEvent = "letter"
+        s.log += LogEntry("e98-letter", s.day, "letter", "Letter", "COMMS", "intro_earth")
         s = Engine.choose(s, 1)
         g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.EVENTS; show(g, "08-event-outcome")
     }
@@ -158,9 +157,54 @@ class ScreenshotTest {
         rule.setContent { ColonyApp(g) }
         rule.mainClock.advanceTimeBy(300)
         g.jump()
-        rule.mainClock.advanceTimeBy(1300)
-        rule.onRoot().captureRoboImage("$out/10-jump.png")
+        rule.mainClock.advanceTimeBy(900)
+        rule.onRoot().captureRoboImage("$out/10a-transit-boost.png")
+        rule.mainClock.advanceTimeBy(1000)
+        rule.onRoot().captureRoboImage("$out/10b-transit-coast.png")
+        rule.mainClock.advanceTimeBy(1900)
+        rule.onRoot().captureRoboImage("$out/10c-transit-braking.png")
     }
+
+    private fun story(page: Int) {
+        rule.mainClock.autoAdvance = false
+        rule.setContent { Backdrop { StoryPage(page, {}, {}, animate = false) } }
+        rule.mainClock.advanceTimeBy(1200)
+        rule.onRoot().captureRoboImage("$out/11-story-${page + 1}.png")
+    }
+    @Test fun s12_story1() = story(0)
+    @Test fun s12_story2() = story(1)
+    @Test fun s12_story3() = story(2)
+    @Test fun s12_story4() = story(3)
+    @Test fun s12_story5() = story(4)
+    @Test fun s12_story6() = story(5)
+
+    /** Settle a planet and show its history book pages. */
+    private fun book(tag: String, p: Planet, trust: Int, traits: List<Trait> = emptyList(), page: Int = 0, seed: Long = 1L) {
+        val g = controller(); var s = midRun()
+        s.trust = trust; s.traits.addAll(traits); s.planet = p; s.phase = Phase.ORBIT
+        s = Engine.settle(s, seed)
+        val rec = s.toRecord()
+        println("BOOK $tag: ${rec.endingTitle} art=${rec.chapters.map { it.art }}")
+        g.debugSetArchive(listOf(rec)); g.debugSet(null)
+        g.screen = Screen.GAME; g.tab = Tab.ARCHIVE; g.openBook = rec.runId; g.bookPage = page
+        show(g, "12-book-$tag-p$page")
+    }
+    private val oceanP = Planet("Thalassa B", 9.0, 2, 4, 1.02, 17, 93, 3, 2, listOf("Floating kelp mats", "Long archipelagos"), 0.5f)
+    private val iceP = Planet("Rimeholm C", 9.0, 1, 3, 0.92, -44, 9, 4, 1, listOf("Glacier belts", "Aurorae"), 0.58f)
+    private val desertP = Planet("Ochre D", 9.0, 0, 4, 0.96, 31, 5, 4, 1, listOf("Rust deserts", "Salt flats"), 0.05f)
+    private val toxicP = Planet("Murk B", 9.0, 0, 2, 1.0, 12, 30, 5, 0, listOf("Canyon systems"), 0.2f)
+    private val jungleP = Planet("Verdance E", 9.0, 1, 5, 1.05, 27, 55, 4, 3, listOf("Crystal forests"), 0.3f)
+    private val archive = listOf(Trait("archive", "THE ARCHIVE", "Kept the archive", 100))
+    @Test fun s13_ocean0() = book("ocean", oceanP, 4, archive, 0)
+    @Test fun s13_ocean1() = book("ocean", oceanP, 4, archive, 1)
+    @Test fun s13_ocean2() = book("ocean", oceanP, 4, archive, 2)
+    @Test fun s13_ice0() = book("ice", iceP, 1, emptyList(), 0)
+    @Test fun s13_ice2() = book("ice", iceP, 1, emptyList(), 2)
+    @Test fun s13_desert0() = book("desert", desertP, -2, emptyList(), 0)
+    @Test fun s13_desert1() = book("desert", desertP, -2, emptyList(), 1)
+    @Test fun s13_toxic1() = book("toxic", toxicP, 0, emptyList(), 1)
+    @Test fun s13_jungle0() = book("jungle", jungleP, 3, archive, 0)
+    @Test fun s13_jungle3() = book("jungle", jungleP, 3, archive, 3)
 }
 
 private fun androidx.compose.ui.test.SemanticsNodeInteraction.performClickSafe() { try { performClick() } catch (_: Throwable) {} }
