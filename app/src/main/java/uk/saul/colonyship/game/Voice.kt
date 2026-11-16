@@ -49,11 +49,18 @@ object Voice {
         val damaged = p.obs.values.count { !it.ok }
         val okRows = PlanetGen.ROWS.filter { p.obs[it]?.ok == true }
         val hab = if (okRows.isEmpty()) 0.0 else okRows.map { PlanetGen.habitability(it, p.obs.getValue(it).value) }.average()
-        val base = when {
-            hab >= 4 -> "On these numbers, people could live here without walls. That is rare. Check what the numbers do not say."
-            hab >= 3 -> "Survivable, with work. Not kind, but survivable."
-            hab >= 2 -> "Marginal. A colony here would live inside its machines for generations, and some would die learning the planet."
-            else -> "Hostile. Landing here would be a way of dying more slowly than in the pods."
+        val (quality, sub) = PlanetGen.verdict(p)
+        val base = when (quality) {
+            "EARTHLIKE" -> "Verdict: a rare Earth-analogue. $sub Check what the numbers do not say."
+            "PROMISING" -> "Verdict: promising. $sub"
+            "HELLISH" -> "Verdict: hellish. $sub Landing here is a last resort, or a sentence."
+            "HOSTILE" -> "Verdict: hostile. $sub"
+            else -> when {
+                hab >= 4 -> "On these numbers, people could live here without walls. That is rare. Check what the numbers do not say."
+                hab >= 3 -> "Survivable, with work. Not kind, but survivable."
+                hab >= 2 -> "Marginal. A colony here would live inside its machines for generations, and some would die learning the planet."
+                else -> "Hostile. Landing here would be a way of dying more slowly than in the pods."
+            }
         }
         val tail = when {
             damaged >= 3 -> " Most of my instruments are damaged. The question marks are not caution; they are ignorance."

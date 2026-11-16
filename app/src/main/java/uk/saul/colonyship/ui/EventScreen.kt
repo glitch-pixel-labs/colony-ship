@@ -59,14 +59,10 @@ fun EventScreen(g: GameController, s: GameState, showPrompt: (PromptShown) -> Un
                 shadow = Shadow(Color(0xFF5A2008), Offset(3f, 3f), 0f)), modifier = Modifier.padding(top = 2.dp, bottom = 8.dp))
             AiQuote(if (pending || entry.outcome.isBlank()) ev.ai(s) else entry.outcome, if (pending) null else (if (entry.earthYear > 0) "OUTCOME · ${entry.earthYear} AD · ${"%.1f".format(entry.ly)} LY" else "OUTCOME · DAY ${entry.day}"), eye = 40.dp, size = 13)
             Spacer(Modifier.height(10.dp))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ConsoleKey("IMAGE PROMPT", Modifier.weight(1f), KeyStyle.CREAM, icon = { PicIcon(C.ink) }) {
-                    showPrompt(PromptShown("Image prompt", Prompts.eventImage(s, ev, entry)))
-                }
-                ConsoleKey("VIDEO PROMPT", Modifier.weight(1f), KeyStyle.DARK, icon = { CamIcon(C.cream) }) {
-                    showPrompt(PromptShown("Video prompt", Prompts.eventVideo(s, ev, entry)))
-                }
-            }
+            PromptRow(
+                onImage = { showPrompt(PromptShown("Image prompt", Prompts.eventImage(s, ev, entry))) },
+                onVideo = { showPrompt(PromptShown("Video prompt", Prompts.eventVideo(s, ev, entry))) },
+            )
             Spacer(Modifier.height(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 ConsoleKey(if (entry.imagePath == null) "+ ATTACH PICTURE" else "REPLACE PICTURE", Modifier.weight(1f), KeyStyle.DARK, height = 34.dp, textSize = 11) { pick() }
@@ -110,9 +106,10 @@ private fun EventHero(ev: EventDef, s: GameState, entry: LogEntry, pending: Bool
                 scaleX = 1.12f; scaleY = 1.12f; translationX = (drift - 0.5f) * 24f
                 if (pending && flick > 0.94f) translationX += 5f
             }, contentScale = ContentScale.Crop)
-            Box(Modifier.fillMaxWidth().height(24.dp).hazard(), contentAlignment = Alignment.Center) {
-                Box(Modifier.background(Color(0xFF160D08), RoundedCornerShape(3.dp)).border(1.dp, C.warn, RoundedCornerShape(3.dp)).padding(horizontal = 8.dp, vertical = 1.dp)) {
-                    Text(ev.hazard, style = label(10.sp, C.warn, 0.16f), maxLines = 1)
+            val crisis = ev.id.startsWith("crisis_")
+            Box(Modifier.fillMaxWidth().height(if (crisis) 32.dp else 24.dp).hazard(), contentAlignment = Alignment.Center) {
+                Box(Modifier.background(if (crisis) Color(0xFF4A0E0C) else Color(0xFF160D08), RoundedCornerShape(3.dp)).border(1.dp, if (crisis) Color(0xFFFF4A32) else C.warn, RoundedCornerShape(3.dp)).padding(horizontal = 8.dp, vertical = 1.dp)) {
+                    Text(if (crisis) "CATASTROPHIC · ${ev.hazard}" else ev.hazard, style = label(10.sp, if (crisis) Color(0xFFFF8A6A) else C.warn, 0.16f), maxLines = 1)
                 }
             }
             Row(Modifier.padding(start = 10.dp, end = 10.dp, top = 30.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {

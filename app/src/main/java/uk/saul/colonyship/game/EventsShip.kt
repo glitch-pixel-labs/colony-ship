@@ -163,9 +163,9 @@ internal object EventsShip {
                     spares(-8.0); days(40)
                     "Distilled. Tank three is clean. The separator is now a single-use item, used."
                 },
-                ChoiceDef("Vent it", "Dump tank three. Simplest and cleanest.", listOf("−20 POWER"), 2) {
-                    reserve(-20.0)
-                    "Tank three is gone in a plume of frozen gas. The drive will run lighter and shorter of reserve."
+                ChoiceDef("Vent it", "Dump tank three. Simplest and cleanest.", listOf("−20 POWER", "−20 FUEL"), 2) {
+                    reserve(-20.0); fuel(-20.0)
+                    "Tank three is gone in a plume of frozen gas. The drive will run lighter and shorter of both reserve and propellant."
                 },
                 ChoiceDef("Burn it anyway", "Feed it slowly into the main burn.", listOf("0 POWER", "!ENGINES −10%"), 3) {
                     dmg(Sys.ENGINE, 10.0, false)

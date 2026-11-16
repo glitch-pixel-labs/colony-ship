@@ -33,7 +33,7 @@ import uk.saul.colonyship.audio.Cue
 import uk.saul.colonyship.game.*
 import kotlin.random.Random
 
-const val VERSION = "0.2.1"
+const val VERSION = "0.3.0"
 
 @Composable
 fun ColonyApp(g: GameController) {
@@ -58,28 +58,45 @@ fun GameShell(g: GameController) {
     BackHandler(enabled = true) {
         play(Cue.BUTTON)
         when {
+            g.chartOpen -> g.chartOpen = false
             g.openBook != null && g.tab == Tab.ARCHIVE -> g.openBook = null
             g.tab != Tab.SHIP -> g.tab = Tab.SHIP
             else -> g.screen = Screen.INTRO
         }
     }
     val s = g.state
-    val (l1, l2) = when (g.tab) {
-        Tab.SHIP -> (s?.let { "${"%.1f".format(Physics.distanceFromSol(it))} LY · SOL" } ?: "SYSTEM STATUS") to (s?.let { "${Physics.earthYear(it)} AD" } ?: "STANDBY")
-        Tab.EVENTS -> eventHeader(s)
-        Tab.SCAN -> scanHeader(s)
-        Tab.ARCHIVE -> archiveHeader(g)
+    val (l1, l2) = when {
+        s?.inCrisis() == true && !g.chartOpen && g.tab != Tab.ARCHIVE ->
+            "CATASTROPHIC" to if (s.crisisLeft > 0) "SETTLE OR 1 BURN" else "SETTLE NOW"
+        g.chartOpen -> (s?.let { "${"%.1f".format(Physics.distanceFromSol(it))} LY · SOL" } ?: "CHART") to (s?.let { "${Physics.earthYear(it)} AD" } ?: "CARTOGRAPHY")
+        g.tab == Tab.SHIP -> (s?.let { "${"%.1f".format(Physics.distanceFromSol(it))} LY · SOL" } ?: "SYSTEM STATUS") to (s?.let { "${Physics.earthYear(it)} AD" } ?: "STANDBY")
+        g.tab == Tab.EVENTS -> eventHeader(s)
+        g.tab == Tab.SCAN -> scanHeader(s)
+        else -> archiveHeader(g)
     }
     val stress = s?.let { Voice.stress(it) } ?: 0
-    val lamps = when { stress >= 3 -> listOf(Color(0xFFFF3B1F), Color(0xFFFF3B1F), Color(0xFFFFC23A)); stress >= 1 -> listOf(Color(0xFF3FE0B0), Color(0xFFFF8A2A), Color(0xFFFFC23A)); else -> listOf(Color(0xFF3FE0B0), Color(0xFF3FE0B0), null) }
-    Column(Modifier.fillMaxSize().scanlines(0.07f)) {
+    val lamps = when {
+        s?.inCrisis() == true -> listOf(Color(0xFFFF3B1F), Color(0xFFFF3B1F), Color(0xFFFF3B1F))
+        stress >= 3 -> listOf(Color(0xFFFF3B1F), Color(0xFFFF3B1F), Color(0xFFFFC23A))
+        stress >= 1 -> listOf(Color(0xFF3FE0B0), Color(0xFFFF8A2A), Color(0xFFFFC23A))
+        else -> listOf(Color(0xFF3FE0B0), Color(0xFF3FE0B0), null)
+    }
+    Column(Modifier.fillMaxSize().scanlines(if (s?.inCrisis() == true) 0.12f else 0.07f)) {
         Box(Modifier.statusBarsPadding().padding(horizontal = 10.dp, vertical = 8.dp)) {
             Header(l1, l2, lamps) { g.settingsFrom = Screen.GAME; g.screen = Screen.SETTINGS }
         }
-        key(g.tab, g.openBook) {
+        if (s != null) {
+            Column(Modifier.padding(horizontal = 10.dp).padding(bottom = 6.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                StatusRibbon(s)
+                CrisisBanner(s)
+            }
+        }
+        key(g.tab, g.openBook, g.chartOpen) {
             val scroll = rememberScrollState()
             Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).padding(horizontal = 10.dp).padding(bottom = 10.dp)) {
-                if (s == null && g.tab != Tab.ARCHIVE) {
+                if (g.chartOpen && s != null) {
+                    ChartScreen(g, s)
+                } else if (s == null && g.tab != Tab.ARCHIVE) {
                     Panel {
                         AiQuote("No voyage in progress. One thousand sleepers are waiting at Earth–Moon L1 for a decision.", "SHIP AI")
                         Spacer(Modifier.height(10.dp))

@@ -22,6 +22,7 @@ class GameController(private val store: Store, val cues: Cues) {
     var openBook by mutableStateOf<String?>(null)
     var bookPage by mutableStateOf(0)
     var jumping by mutableStateOf(false)
+    var chartOpen by mutableStateOf(false)
     var settingsFrom by mutableStateOf(Screen.INTRO)
     var musicVolume by mutableStateOf(store.musicVolume)
         private set
@@ -55,7 +56,7 @@ class GameController(private val store: Store, val cues: Cues) {
         store.runCounter = n
         val s = Engine.newGame(n, System.nanoTime() xor System.currentTimeMillis(), System.currentTimeMillis())
         state = s; store.saveCurrent(s)
-        tab = Tab.SHIP; openBook = null; storyThenGame = true; screen = Screen.STORY
+        tab = Tab.SHIP; openBook = null; chartOpen = false; storyThenGame = true; screen = Screen.STORY
     }
 
     /** True when the prologue should hand over to the console; false when replayed from settings. */
@@ -71,6 +72,7 @@ class GameController(private val store: Store, val cues: Cues) {
     fun jump() {
         val s = state ?: return
         if (jumping || (s.phase != Phase.CRUISE && s.phase != Phase.ORBIT)) return
+        if (!Engine.canDepart(s)) return
         jumping = true
         cues.play(Cue.JUMP)
         commit(Engine.jump(s))
@@ -82,7 +84,7 @@ class GameController(private val store: Store, val cues: Cues) {
         if (s.phase == Phase.ENDED) { endRun(s); return }
         tab = Tab.EVENTS
         val ev = s.currentEvent?.let { Events.byId(it) }
-        if (ev != null && ev.id in setOf("storm", "breach", "cascade", "reactor", "coolant", "flare", "elders", "radiator", "bearing", "fuel", "rogue")) cues.play(Cue.ALARM) else cues.play(Cue.SELECT)
+        if (ev != null && ev.id.startsWith("crisis_")) cues.play(Cue.CRISIS) else if (ev != null && ev.id in setOf("storm", "breach", "cascade", "reactor", "coolant", "flare", "elders", "radiator", "bearing", "fuel", "rogue", "warning_pays")) cues.play(Cue.ALARM) else cues.play(Cue.SELECT)
     }
 
     fun choose(i: Int) {

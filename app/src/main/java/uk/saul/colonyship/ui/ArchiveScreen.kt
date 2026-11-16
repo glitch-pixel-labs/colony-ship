@@ -106,8 +106,10 @@ fun worldKind(p: Planet?): String = if (p == null) "Deep space" else when (Endin
 @Composable
 fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (PromptShown) -> Unit, showImage: (String?, Int, String) -> Unit) {
     val ctx = LocalContext.current
-    val pages = r.chapters.size + 1 // last page = ship's log
-    val page = g.bookPage.coerceIn(0, pages - 1)
+    val hasChart = r.route.isNotEmpty()
+    val pages = r.chapters.size + 1 + if (hasChart) 1 else 0
+    val page = g.bookPage.coerceIn(0, (pages - 1).coerceAtLeast(0))
+    val chartIndex = if (hasChart) r.chapters.size else -1
     val ch = r.chapters.getOrNull(page)
     val pick = rememberPhotoPicker { uri ->
         val ok = if (ch != null) g.attachToChapter(r.runId, ch.key, uri) else false
@@ -124,13 +126,19 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
                 .padding(horizontal = 20.dp, vertical = 18.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            val chapterLabel = if (ch != null) "CHAPTER ${ROMAN.getOrElse(page) { "${page + 1}" }}" else "THE SHIP'S LOG"
+            val chapterLabel = when {
+                ch != null -> "CHAPTER ${ROMAN.getOrElse(page) { "${page + 1}" }}"
+                page == chartIndex -> "THE VOYAGE"
+                else -> "THE SHIP'S LOG"
+            }
             Text(if (current) "THE VOYAGE SO FAR · RUN ${r.runNumber.toString().padStart(2, '0')}" else "A HISTORY OF ${r.settlementName.uppercase().let { if (it.startsWith("THE")) it else "THE $it SETTLEMENT".replace("THE THE", "THE") }} · $chapterLabel",
                 style = label(10.sp, C.inkRed, 0.12f), textAlign = TextAlign.Center)
             Spacer(Modifier.height(10.dp))
             // Timeline
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.Top) {
-                val labels = r.chapters.map { "${it.yearLabel} · ${it.title.removePrefix("The ").uppercase()}" } + "LOG · ${r.log.size} ENTRIES"
+                val labels = r.chapters.map { "${it.yearLabel} · ${it.title.removePrefix("The ").uppercase()}" } +
+                    (if (hasChart) listOf("CHART · THE VOYAGE") else emptyList()) +
+                    "LOG · ${r.log.size} ENTRIES"
                 labels.forEachIndexed { i, l ->
                     Column(Modifier.weight(1f).hapticClick(uk.saul.colonyship.audio.Cue.TICK) { g.bookPage = i }, horizontalAlignment = Alignment.CenterHorizontally) {
                         Box(Modifier.size(11.dp).clip(CircleShape).background(if (i == page) C.orange else if (i < page) Color(0xFF7A5A40) else Color.Transparent).border(1.5.dp, Color(0xFF7A5A40), CircleShape))
@@ -139,8 +147,11 @@ fun BookScreen(g: GameController, r: RunRecord, current: Boolean, showPrompt: (P
                 }
             }
             Spacer(Modifier.height(10.dp))
-            if (ch != null) ChapterPage(g, r, ch, page, current, showPrompt, showImage, pick)
-            else LogPage(g, r, showPrompt, showImage)
+            when {
+                ch != null -> ChapterPage(g, r, ch, page, current, showPrompt, showImage, pick)
+                page == chartIndex -> BookChartPage(r)
+                else -> LogPage(g, r, showPrompt, showImage)
+            }
             Spacer(Modifier.height(12.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 if (page > 0) Text("← PREVIOUS", style = label(10.sp, C.tealDk), modifier = Modifier.hapticClick(uk.saul.colonyship.audio.Cue.TICK) { g.bookPage = page - 1 }.padding(6.dp))
@@ -210,14 +221,11 @@ private fun ChapterPage(g: GameController, r: RunRecord, ch: Chapter, page: Int,
         if (r.aiFate.isNotBlank()) PaperChip("AI FATE · ${r.aiFate}", C.tealDk)
     }
     Spacer(Modifier.height(12.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PillButton("+ ATTACH PICTURE", true, Modifier.weight(1f)) { pick() }
-        PillButton("COPY IMAGE PROMPT", false, Modifier.weight(1f)) { showPrompt(PromptShown("Image prompt", Prompts.chapterImage(r.planet, r.settlementName, ch, r.traits, r.survivors))) }
-    }
-    Spacer(Modifier.height(7.dp))
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        PillButton("COPY VIDEO PROMPT", false, Modifier.weight(1f)) { showPrompt(PromptShown("Video prompt", Prompts.chapterVideo(r.planet, r.settlementName, ch, r.traits, r.survivors))) }
-        PillButton("SHARE CHAPTER", false, Modifier.weight(1f)) {
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        PillButton("+ PICTURE", true, Modifier.weight(1f), small = true) { pick() }
+        PillButton("IMAGE", false, Modifier.weight(1f), small = true) { showPrompt(PromptShown("Image prompt", Prompts.chapterImage(r.planet, r.settlementName, ch, r.traits, r.survivors))) }
+        PillButton("VIDEO", false, Modifier.weight(1f), small = true) { showPrompt(PromptShown("Video prompt", Prompts.chapterVideo(r.planet, r.settlementName, ch, r.traits, r.survivors))) }
+        PillButton("SHARE", false, Modifier.weight(1f), small = true) {
             shareText(ctx, "Colony Ship · ${ch.title}", "${ch.yearLabel}: ${ch.title}\n\n" + ch.paragraphs.joinToString("\n\n") + "\n\n— from Colony Ship, run ${r.runNumber}")
         }
     }

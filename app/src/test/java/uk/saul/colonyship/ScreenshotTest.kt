@@ -43,7 +43,8 @@ class ScreenshotTest {
         }
         s.health[Sys.SCAN] = 44.0; s.health[Sys.SHIELD] = 67.0; s.health[Sys.ENGINE] = 80.0; s.health[Sys.HULL] = 74.0
         s.health[Sys.LIFE] = 91.0; s.health[Sys.CRYO] = 88.0
-        s.air = 71.0; s.food = 84.0; s.water = 77.0; s.spares = 41.0; s.reserve = 36.0
+        s.health[Sys.CORE] = 82.0; s.health[Sys.LANDER] = 90.0; s.health[Sys.DATA] = 86.0
+        s.air = 71.0; s.food = 84.0; s.water = 77.0; s.spares = 41.0; s.reserve = 36.0; s.fuel = 64.0
         s.power[Channel.LIFE] = 32; s.power[Channel.SCAN] = 14; s.power[Channel.SHIELD] = 22; s.power[Channel.ENGINE] = 18; s.power[Channel.REPAIR] = 8
         val c = s.pods.toCharArray(); val r = Random(4)
         for (i in c.indices) c[i] = 'S'
@@ -205,6 +206,93 @@ class ScreenshotTest {
     @Test fun s13_toxic1() = book("toxic", toxicP, 0, emptyList(), 1)
     @Test fun s13_jungle0() = book("jungle", jungleP, 3, archive, 0)
     @Test fun s13_jungle3() = book("jungle", jungleP, 3, archive, 3)
+
+    private fun eventShot(name: String, evId: String, tweak: GameState.() -> Unit = {}) {
+        val g = controller()
+        val ev = Events.byId(evId)!!
+        val s = midRun()
+        s.phase = Phase.EVENT
+        s.currentEvent = ev.id
+        s.log += LogEntry("shot-$evId", s.day, ev.id, ev.title, ev.kicker, ev.art, earthYear = Physics.earthYear(s), ly = Physics.distanceFromSol(s))
+        s.tweak()
+        g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.EVENTS
+        show(g, name)
+    }
+
+    @Test fun v03_console() {
+        val g = controller(); val s = midRun(); s.phase = Phase.ORBIT; g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.SHIP
+        show(g, "v03-console")
+    }
+
+    @Test fun v03_console_damaged() {
+        val g = controller(); val s = midRun(); s.phase = Phase.ORBIT
+        s.health[Sys.HULL] = 32.0; s.health[Sys.CORE] = 28.0; s.health[Sys.ENGINE] = 36.0; s.health[Sys.CRYO] = 41.0; s.fuel = 18.0; s.reserve = 11.0
+        s.damageLog += DamageNote(s.day, Physics.earthYear(s), "HULL", "Fatigue crack in ring frame seven", "A structural failure in transit is now a real risk; landings will kill more people.")
+        s.damageLog += DamageNote(s.day, Physics.earthYear(s), "CORE", "Confinement geometry is wounded", "Reserve power will be unreliable; brownouts are likely.")
+        g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.SHIP
+        show(g, "v03-console-damaged")
+    }
+
+    @Test fun v03_scan_earthlike() {
+        val g = controller(); val s = midRun()
+        val p = PlanetGen.generateLead(Random(3), "paradise", Physics.distanceFromSol(s))
+        s.planet = Engine.scanPass(s, p, Random(3)); s.phase = Phase.ORBIT
+        g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.SCAN
+        show(g, "v03-scan-earthlike")
+    }
+
+    @Test fun v03_scan_hellish() {
+        val g = controller(); val s = midRun()
+        val p = PlanetGen.generate(Random(11), 4, 40.0).let { raw ->
+            // force a hellish kind if the seed was kind
+            if (raw.quality == "HELLISH") raw else PlanetGen.generateLead(Random(19), "grave", 40.0)
+        }
+        s.planet = Engine.scanPass(s, p, Random(11)); s.phase = Phase.ORBIT
+        g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.SCAN
+        show(g, "v03-scan-hellish")
+    }
+
+    @Test fun v03_signal() = eventShot("v03-signal", "wow_burst")
+
+    @Test fun v03_fate() {
+        eventShot("v03-fate", "okonkwo_fate") {
+            if ("okonkwo" !in awake) awake += "okonkwo"
+        }
+    }
+
+    @Test fun v03_tabby() = eventShot("v03-tabby", "tabby_swarm") {
+        posX = 0.721 * 1470; posY = 0.580 * 1470; posZ = 0.379 * 1470
+        traits += Trait("tabby-visited", "BOYAJIAN'S STAR", "Reached KIC 8462852", day)
+    }
+
+    @Test fun v03_crisis() = eventShot("v03-crisis", "crisis_reactor") {
+        crisis = "reactor"; crisisLeft = 1
+        health[Sys.CORE] = 24.0; reserve = 8.0
+        traits += Trait("forced-landfall", "FORCED LANDFALL", "A reactor containment breach left no choice but to land.", day)
+    }
+
+    @Test fun v03_decode() = eventShot("v03-decode", "decode_world") {
+        insight = "world"; insightPayload = "paradise"; insightLeft = 0
+        nextStarLy = 9.4
+        traits += Trait("archive", "THE ALIEN ARCHIVE", "Copied a non-human library", day)
+    }
+
+    @Test fun v03_chart() {
+        val g = controller(); val s = midRun(); s.phase = Phase.ORBIT
+        if (s.route.none { it.id == "sol" }) {
+            s.route += ChartStop("sol", "Sol", 0.0, 0.0, 0.0, 0.0, Physics.LAUNCH_YEAR, 0.0, "sol", "Launch from Earth–Moon L1.")
+        }
+        if (s.route.size < 3) {
+            s.route += ChartStop("j1-signal", "A Narrowband Signal", 3.2, 1.1, 0.4, 3.4, 2194, 4.1, "signal", "A structured carrier on the hydrogen line.")
+            s.route += ChartStop("j2-tabby", "KIC 8462852", 0.721 * 80, 0.580 * 80, 0.379 * 80, 80.0, 2301, 62.0, "tabby", "Boyajian’s Star, at range on the way out.")
+        }
+        g.debugSet(s); g.screen = Screen.GAME; g.tab = Tab.SHIP; g.chartOpen = true
+        show(g, "v03-chart")
+    }
+
+    @Test fun v03_ending() {
+        book("v03-ending-earthlike", PlanetGen.generateLead(Random(5), "paradise", 22.0), 4, listOf(Trait("archive", "THE ALIEN ARCHIVE", "Copied a library", 10), Trait("lead-course", "THE RECOMMENDED WORLD", "Diverted", 40)), 0)
+    }
 }
 
 private fun androidx.compose.ui.test.SemanticsNodeInteraction.performClickSafe() { try { performClick() } catch (_: Throwable) {} }

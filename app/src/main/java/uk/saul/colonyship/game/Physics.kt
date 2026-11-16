@@ -18,6 +18,9 @@ object Physics {
     const val G_LY_YR2 = 1.032          // 9.81 m/s² expressed in ly/yr²
     const val ACCEL_G = 0.5             // boost/brake at half a gravity
     const val DAYS_PER_YEAR = 365.25
+    /** KIC 8462852 (Boyajian's Star / Tabby's Star): F-type, Cygnus, ~1,470 ly from Sol. */
+    const val TABBY_LY = 1470.0
+    const val HUMAN_RELIC_LY = 28.0
 
     data class Transit(val distanceLy: Double, val beta: Double, val shipYears: Double, val earthYears: Double) {
         val gamma get() = 1.0 / sqrt(1.0 - beta * beta)
@@ -65,4 +68,16 @@ object Physics {
         dx /= n; dy /= n; dz /= n
         s.posX += dx * d; s.posY += dy * d; s.posZ += dz * d
     }
+
+    /** Place the ship at KIC 8462852, 1,470 ly toward Cygnus. */
+    fun placeAtTabby(s: GameState) {
+        // A fixed direction standing in for Cygnus (RA ~20h, dec +44°).
+        val x = 0.721; val y = 0.580; val z = 0.379
+        val n = sqrt(x * x + y * y + z * z)
+        s.posX = x / n * TABBY_LY
+        s.posY = y / n * TABBY_LY
+        s.posZ = z / n * TABBY_LY
+    }
+
+    fun remainingToTabby(s: GameState) = (TABBY_LY - distanceFromSol(s)).coerceAtLeast(80.0)
 }

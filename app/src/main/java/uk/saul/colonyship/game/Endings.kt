@@ -12,7 +12,14 @@ import kotlin.random.Random
 object Endings {
 
     fun habScore(p: Planet): Double {
-        var h = listOf(-3.5, -3.5, -1.5, 0.5, 2.0, 1.5)[p.atmosphere.coerceIn(0, 5)]
+        var h = listOf(-3.5, -3.5, -1.5, 0.5, 2.0, 1.5, -4.0)[p.atmosphere.coerceIn(0, 6)]
+        h += when (p.quality) { "EARTHLIKE" -> 3.0; "PROMISING" -> 1.2; "HELLISH" -> -5.0; "HOSTILE" -> -2.2; else -> 0.0 }
+        h += when (p.kind) {
+            "furnace", "crushing", "radiation", "rogue" -> -2.0
+            "acid", "vacuum" -> -1.5
+            "earthlike" -> 1.0
+            else -> 0.0
+        }
         val dg = abs(p.gravity - 1.0)
         h += when { dg < 0.15 -> 2.0; dg < 0.35 -> 1.0; dg < 0.6 -> -0.5; else -> -2.5 }
         val dt = abs(p.temperature - 15)
@@ -28,8 +35,14 @@ object Endings {
         if (s.hasTrait("archive") || s.hasTrait("records")) t += 1.0
         if (s.hasTrait("engineers")) t += 0.7
         if (s.hasTrait("relics")) t += 0.3
-        if ("okonkwo" in s.awake) t += 0.5
-        if ("lindqvist" in s.awake) t += 0.5
+        if (s.hasTrait("tabby-archive")) t += 1.1
+        if (s.hasTrait("alien-tech") || s.hasTrait("alien-tech-stored")) t += 0.8
+        if (s.hasTrait("warning-paid")) t += 0.4
+        if (s.hasTrait("tabby-salvage")) t += 0.6
+        if (s.hasTrait("tabby-photometry")) t += 0.3
+        t += (s.h(Sys.DATA) - 50.0) / 80.0
+        if ("okonkwo" in s.awake && s.fateOf("okonkwo")?.status != "DEAD") t += 0.5
+        if ("lindqvist" in s.awake && s.fateOf("lindqvist")?.status != "DEAD") t += 0.5
         if (s.hasTrait("lost-elders")) t -= 0.6
         t += survivors / 400.0
         if (s.hasTrait("lean")) t -= 0.5
@@ -51,11 +64,19 @@ object Endings {
 
     fun type(hab: Double, tech: Double, survivors: Int, p: Planet): String = when {
         survivors < 40 || hab < -6 -> "silent"
-        p.life == 4 && hab >= -1 -> "contact"
+        p.quality == "HELLISH" && p.kind in setOf("furnace", "crushing", "radiation", "rogue", "vacuum") && survivors < 80 -> "silent"
+        p.quality == "HELLISH" && p.atmosphere <= 2 -> if (tech >= 3.0 && survivors >= 80) "warrens" else "silent"
+        p.quality == "HELLISH" && p.kind == "acid" && hab >= 1 && survivors >= 120 -> "ocean"
+        p.life == 4 && hab >= -1 && p.quality != "HELLISH" -> "contact"
         p.atmosphere <= 2 && tech >= 3.0 -> "warrens"
         p.atmosphere <= 2 -> "silent"
+        p.kind == "grave" && survivors < 120 -> "silent"
+        p.kind == "grave" -> if (tech >= 3.0) "warrens" else "frontier"
+        p.kind == "alien-garden" && p.atmosphere <= 2 -> if (tech >= 3.0 && survivors >= 80) "warrens" else "silent"
+        p.kind == "paradise" && survivors >= 400 && tech >= 3.0 -> "thriving"
+        p.quality == "EARTHLIKE" && hab >= 4 && tech >= 3.2 && survivors >= 450 -> "thriving"
         hab >= 5 && tech >= 4.0 && survivors >= 550 -> "thriving"
-        p.water >= 82 && hab >= 1 -> "ocean"
+        p.water >= 82 && hab >= 1 && p.kind != "radiation" -> "ocean"
         hab >= 3 && tech >= 2.5 -> "garden"
         hab >= 0 && tech < 2.5 -> "stoneage"
         else -> "frontier"
@@ -71,6 +92,13 @@ object Endings {
     fun biome(p: Planet): String {
         val f = p.features
         return when {
+            p.kind == "paradise" -> "temperate"
+            p.kind == "grave" -> if (p.atmosphere <= 2) "toxic" else "desert"
+            p.kind == "alien-garden" -> if (p.atmosphere >= 6 || p.temperature > 60) "volcanic" else "toxic"
+            p.kind == "furnace" || p.kind == "crushing" -> if ("Tidally locked" in f || p.kind == "furnace") "locked" else "volcanic"
+            p.kind == "rogue" -> "ice"
+            p.kind == "radiation" || p.kind == "vacuum" -> "toxic"
+            p.kind == "acid" -> "ocean"
             p.atmosphere <= 1 && p.temperature > 50 || ("Volcanic chains" in f && p.atmosphere <= 2) -> "volcanic"
             "Tidally locked" in f -> "locked"
             p.water >= 82 -> "ocean"
@@ -164,6 +192,9 @@ object Endings {
         if (s.hasTrait("starborn")) opts += "Shipborn"
         if (p.water >= 82) opts += "Saltwater"
         if (biome(p) == "ice") opts += "Rime"
+        if (p.quality == "EARTHLIKE") opts += "Second Earth"
+        if (p.kind == "rogue") opts += "No Sun"
+        if (s.hasTrait("tabby-visited")) opts += "Swarmview"
         return opts.random(r)
     }
 
@@ -174,7 +205,8 @@ object Endings {
         val fx = Fx(s, r)
         val hull = s.h(Sys.HULL); val eng = s.h(Sys.ENGINE)
         val before = s.alive()
-        val frac = (((30 - hull).coerceAtLeast(0.0)) * 0.014 + ((25 - eng).coerceAtLeast(0.0)) * 0.012).coerceAtMost(0.9)
+        val lander = s.h(Sys.LANDER)
+        val frac = (((30 - hull).coerceAtLeast(0.0)) * 0.014 + ((25 - eng).coerceAtLeast(0.0)) * 0.012 + ((35 - lander).coerceAtLeast(0.0)) * 0.012).coerceAtMost(0.9)
         fx.killPods((before * frac).roundToInt())
         // Failing pods do not all survive the thaw.
         fx.killPods((s.failing() * 0.5).roundToInt())
@@ -194,7 +226,8 @@ object Endings {
             legacy(s, p, type, name, fate, landYear, pickArt(legacyArt(p, type, fate, tech), used)),
         )
         if (type != "silent" && (p.features.contains("Ancient ruins") || s.hasTrait("heralds") || s.hasTrait("archive") ||
-                s.hasTrait("records") || hab >= 6))
+                s.hasTrait("records") || s.hasTrait("tabby-archive") || s.hasTrait("tabby-salvage") ||
+                s.hasTrait("tabby-visited") || s.hasTrait("forced-landfall") || s.hasTrait("lead-course") || s.hasTrait("alien-tech") || s.hasTrait("warning-paid") || s.hasTrait("archive") || s.fates.isNotEmpty() || hab >= 6 || p.quality == "EARTHLIKE" || p.quality == "HELLISH" || p.kind in setOf("paradise", "grave", "alien-garden")))
             chapters += afterword(s, p, name, fate, landYear, pickArt(afterwordArt(s, p, fate), used))
         val score = ((hab + 12) * 25 + tech * 40 + survivors * 0.6 + s.trust * 15).roundToInt().coerceAtLeast(0)
         val summary = "${TITLES[type]} · ${p.name} · $survivors survivors · AI: ${fate.lowercase()}"
@@ -202,20 +235,79 @@ object Endings {
     }
 
     private fun spLine(s: GameState): String? {
-        val bits = s.awake.map { id ->
-            when (id) {
-                "okonkwo" -> "Chief Okonkwo had the reactor coupled to a ground grid before the first night"
-                "raman" -> "Dr Raman was taking soil cores within the hour, and had the first seed trays out by the end of the week"
-                "varga" -> "Dr Varga thawed the frailest first and sat with each of them through the worst of the waking"
-                "wren" -> "Lieutenant Wren flew the last shuttle down himself, in weather he should not have flown in"
-                "lindqvist" -> "Archivist Lindqvist began the colony’s record on the first morning, by hand, in pencil, because pencil lasts"
-                else -> null
+        val bits = SPECIALISTS.mapNotNull { sp ->
+            val fate = s.fateOf(sp.id)
+            when {
+                fate?.status == "DEAD" -> "${sp.short} did not reach landfall. ${fate.detail}"
+                fate?.status == "MISSING" -> "${sp.short} was already missing when we arrived. ${fate.detail}"
+                sp.id !in s.awake -> null
+                fate?.status == "HERO" -> when (sp.id) {
+                    "okonkwo" -> "Chief Okonkwo, who had already spent himself once in transit, had the reactor coupled to a ground grid before the first night"
+                    "raman" -> "Dr Raman, still coughing from the work she had done in the bays, was taking soil cores within the hour"
+                    "varga" -> "Dr Varga, who had sat with a failing row in the dark, thawed the frailest first and sat with them again"
+                    "wren" -> "Lieutenant Wren, who had already flown one burn the automatics could not, flew the last shuttle down himself"
+                    "lindqvist" -> "Archivist Lindqvist, whose hands were still stained from the stacks, began the colony’s record on the first morning, in pencil, because pencil lasts"
+                    else -> null
+                }
+                else -> when (sp.id) {
+                    "okonkwo" -> "Chief Okonkwo had the reactor coupled to a ground grid before the first night"
+                    "raman" -> "Dr Raman was taking soil cores within the hour, and had the first seed trays out by the end of the week"
+                    "varga" -> "Dr Varga thawed the frailest first and sat with each of them through the worst of the waking"
+                    "wren" -> "Lieutenant Wren flew the last shuttle down himself, in weather he should not have flown in"
+                    "lindqvist" -> "Archivist Lindqvist began the colony’s record on the first morning, by hand, in pencil, because pencil lasts"
+                    else -> null
+                }
             }
-        }.filterNotNull()
-        return if (bits.isEmpty()) null else bits.joinToString("; ").replaceFirstChar { it.uppercase() } + "."
+        }
+        return if (bits.isEmpty()) null else bits.joinToString(" ") { if (it.endsWith(".")) it else "$it." }
     }
 
-    private fun arrival(p: Planet): String = when (biome(p)) {
+    private fun journeyLine(s: GameState): String {
+        val bits = mutableListOf<String>()
+        bits += "The ship arrived with hull at ${s.h(Sys.HULL).roundToInt()}%, the power core at ${s.h(Sys.CORE).roundToInt()}%, and ${s.fuel.roundToInt()} units of fuel still in the tanks, after ${s.jumps} burns."
+        if (s.hasTrait("forced-landfall") || s.crisis != null) bits += "This was a forced landfall. ${if (s.crisis != null) Engine.crisisTitle(s.crisis) + " had closed the long voyage." else "A catastrophic failure had left us no honest alternative to setting down."}"
+        val world = s.planet
+        if (s.hasTrait("lead-course") || world?.kind in setOf("paradise", "grave", "alien-garden")) bits += leadLine(s, world)
+        if (s.hasTrait("alien-tech") || s.hasTrait("alien-tech-stored")) bits += "A procedure taken from a non-human archive had been ${if (s.hasTrait("alien-tech")) "applied in flight" else "stored for the colony"}."
+        if (s.hasTrait("warning-paid")) bits += "A warning in that same archive had come true, and because we had prepared, the failure did not take the ship."
+        else if (s.hasTrait("warning-ignored")) bits += "A warning in the archive had described a failure that later arrived. We had filed the warning, and not prepared."
+        if (s.hasTrait("tabby-visited")) bits += tabbyLine(s)
+        else if (s.hasTrait("tabby-course") && !s.hasTrait("tabby-visited"))
+            bits += "A course had been laid for KIC 8462852, Boyajian’s Star, 1,470 light years from Sol. We never made that burn. The light curve is in the archive; the swarm, if that is what it is, was left unseen."
+        else if (s.hasTrait("tabby-photometry"))
+            bits += "In transit we recorded the irregular dimming of KIC 8462852, Boyajian’s Star, at range — dips as deep as twenty-two percent, poorly periodic, just as the old Kepler photometry had shown — and we did not divert."
+        else if (s.hasTrait("tabby-declined"))
+            bits += "We had a chance to divert to KIC 8462852, and I declined it. The star is still in Cygnus. The colony may look it up, if it lasts long enough to build a telescope."
+        if (s.damageLog.isNotEmpty()) {
+            val last = s.damageLog.take(3).joinToString("; ") { it.title.lowercase() }
+            bits += "The damage log, at landfall, still carried these entries: $last."
+        }
+        return bits.joinToString(" ")
+    }
+
+    private fun tabbyLine(s: GameState): String = when {
+        s.hasTrait("tabby-salvage") ->
+            "We had gone out of our way — 1,470 light years from Sol, to an F-type star in Cygnus that Earth had once called Tabby’s Star, and later Boyajian’s Star — and we had cut plate from a shattered swarm that was the entire explanation for its famous dimming. The material is in the colony’s stores. The builders were not in the swarm, or anywhere I could find them."
+        s.hasTrait("tabby-archive") ->
+            "We had gone 1,470 light years from Sol to KIC 8462852, Boyajian’s Star, and we had surveyed the shattered swarm that made its light curve famous: broken plates, crossing orbits, occultations as deep as a fifth of the disc, and no one home. The reduction is in the databank. It is the best account of that star that exists."
+        s.hasTrait("tabby-passed") ->
+            "We had stood inside the orbit of KIC 8462852, 1,470 light years from Sol, and looked at the broken swarm that had been dimming an F-type star for longer than our species has had writing, and we had not lingered. I still think about the plates."
+        else ->
+            "We had visited KIC 8462852, Boyajian’s Star, 1,470 light years from Sol in Cygnus, and we had seen for ourselves the shattered swarm that caused the irregular dips the old catalogues recorded, some of them as deep as twenty-two percent. Whoever built it was gone."
+    }
+
+    private fun arrival(p: Planet): String = when {
+        p.kind == "furnace" -> "${p.name} keeps one face to its star. The dayside is a magma ocean at ${p.temperature}°C; the nightside is a frozen waste. We put down in the twilight band, on rock that creaks as it expands and contracts, and the wind never stops running from cold to hot."
+        p.kind == "crushing" -> "The atmosphere was a vice. Surface pressure would have flattened an unarmoured lander in a minute. We went down on a high plateau, as high as the ship’s hull would take, and even there the sky was a brown, heavy lid. Nobody goes outside without a frame."
+        p.kind == "radiation" -> "The survey had not exaggerated. Unshielded tissue would not have lasted an hour on the surface. We buried the first habitats under six metres of packed regolith and we still count the sieverts like money."
+        p.kind == "acid" -> "There was water, after a fashion: an ocean that would have eaten an unprotected hull, under a sky that smelled, through the filters, of burnt matches. We landed on a basalt rise the colour of old rust, and everything that will ever be built here must be lined, or it will not last a season."
+        p.kind == "rogue" -> "${p.name} has no star. We found it by its mass and its faint leftover heat, a world wandering between the lights, surface at ${p.temperature}°C. The only day here is the one the reactor makes. The sky is a map of strangers."
+        p.kind == "vacuum" -> "There was no air worth the name, and no kindness in the rock. We landed under a black sky, threw up the first dome, and began the long work of not dying in a place that had never noticed life."
+        p.kind == "paradise" -> "${p.name} was the rare thing the catalogue had promised, and, unusually, the promise held: breathable air at ${p.temperature}°C, gravity of ${"%.2f".format(p.gravity)} g, standing water, a sky that did not have to be filtered. We had come here because a dead ship told us to. For once, the dead ship had been right by our standards as well as its own."
+        p.kind == "grave" -> "We came in on the coordinates the archive had marked as suitable, and we found a graveyard. Wreckage in a high orbit; cuts and foundations on the ground; no one home, and no air worth the name. Whatever recommended ${p.name} did not mean it for lungs like ours, or else it meant it as a warning we had taken as an invitation."
+        p.kind == "alien-garden" -> "${p.name} was, I think, a garden. Just not for us. The climate the catalogue had called favoured would have killed an unsuited human in minutes. We landed because we had followed the heading. We stayed because the tanks, by then, had left us little choice."
+        p.kind == "earthlike" -> "${p.name} was the rare thing we had almost stopped believing in: breathable air at ${p.temperature}°C, gravity of ${"%.2f".format(p.gravity)} g, standing water, a sky that did not have to be filtered. Several of the newly woken wept. I logged it as a physiological response. It was not only that."
+        else -> when (biome(p)) {
         "ocean" -> "There was almost no land: a few basalt islands in an ocean that covered ${p.water}% of the world. We put the lander down on the largest, a ridge of black rock three kilometres long, and the sea took the outer landing pad in the first storm."
         "ice" -> "The surface at the landing site was ${p.temperature}°C. Everything was ice: ice plains, ice cliffs, ice in the air. The ship’s reactor became the colony’s only fire, and everyone lived within a few hundred metres of it."
         "desert" -> "The landing site was dry to the horizon: dust, salt pans, and wind that never quite stopped. Water was the first problem, the second and the third. Raman’s survey found an aquifer at four hundred metres."
@@ -226,6 +318,7 @@ object Endings {
         "volcanic" -> "The ground was never quite still. Volcanic chains lit the horizon at night, and the first habitat had to be moved twice to stay ahead of the lava."
         "storm" -> "${p.name}’s weather was violent. Cyclones the size of continents crossed the archipelagos every season, and the colony learned to build low, anchor deep and wait things out."
         else -> "${p.name} was, by any standard we had, kind: breathable air at ${p.temperature}°C, gravity of ${"%.2f".format(p.gravity)} g, water in the right places. Several of the newly woken wept at the sight of an open sky."
+        }
     }
 
     private fun landfall(s: GameState, p: Planet, survivors: Int, lost: Int, name: String, year: Int, art: String): Chapter {
@@ -237,7 +330,20 @@ object Endings {
             lost > 0 -> "$lost sleepers did not survive the thaw. $survivors did."
             else -> "Every pod that reached orbit thawed cleanly. $survivors people woke under a new sky."
         }
-        val paras = listOfNotNull(first, arrival(p), loss, spLine(s), "They named the settlement $name.")
+        val quality = when (p.quality) {
+            "EARTHLIKE" -> if (p.kind == "paradise")
+                "The survey’s last word on ${p.name} was that the catalogue had, against my training, been right. This was a good world, by every measurement that matters to a body."
+            else "The survey’s last word on ${p.name} had been a cautious one, because I had been disappointed before. This time the caution was misplaced. It was, by every measurement that matters to a body, a good world."
+            "HELLISH" -> when (p.kind) {
+                "grave" -> "I had told the log the truth before we committed: the recommended world was a graveyard, and we were landing anyway."
+                "alien-garden" -> "I had told the log the truth: ${p.name} was favoured by whoever wrote the catalogue, and hostile to us, and we were landing because the heading, or the tanks, had left us here."
+                else -> "I had told the log the truth about ${p.name} before we committed to the descent: it was a hellish world, and we were landing because the tanks, or the hull, or the years, had left us no kinder choice."
+            }
+            "HOSTILE" -> "${p.name} was hostile in ways the numbers had already made clear. We landed anyway, with our eyes open."
+            "PROMISING" -> "${p.name} was promising, not kind. Promising is enough to begin with, and not enough to finish with."
+            else -> "The world was marginal: survivable, not generous. We had seen worse. We had hoped for better."
+        }
+        val paras = listOfNotNull(first, quality, arrival(p), loss, journeyLine(s), spLine(s), "They named the settlement $name.")
         return Chapter("ch1", yearLabel(1, year), "Landfall", paras, art, "Plate I · Landfall on ${p.name}.")
     }
 
@@ -277,7 +383,12 @@ object Endings {
                 else "The habitat could not be made self-sustaining. Every year there was a little less of everything: less food, less air, fewer people to fix the machines that made them.",
                 "By year $y, the colony had stopped having children. There was no decision; there was simply no point.")
         }
-        return Chapter("ch2", yearLabel(y, year), title, body + listOfNotNull(grudge, truth), art, "Plate II · $name, year $y.")
+        val world = when (p.quality) {
+            "EARTHLIKE" -> "The kindness of ${p.name} did not make the work easy; it made the work possible. By year $y that distinction was taught in schools."
+            "HELLISH" -> "No one in $name pretended the world was fair. ${p.name} had been a hellish landing, and year $y had not made it gentle. What they had, they had made."
+            else -> null
+        }
+        return Chapter("ch2", yearLabel(y, year), title, body + listOfNotNull(world, grudge, truth), art, "Plate II · $name, year $y.")
     }
 
     private fun fateLine(fate: String, name: String): String = when (fate) {
@@ -302,7 +413,9 @@ object Endings {
             "silent" -> "Silence" to "A thousand years on, there is no one on ${p.name}. The habitat domes are dust-filled and the reactor is cold. The last colonist died in year ${listOf(41, 58, 73, 96)[(s.day / 7) % 4]}. She left a note asking me to tell anyone who came that they had tried."
             else -> "A Hard Frontier" to "A thousand years on, $name is a city of four hundred thousand, built on the bones of three famines. Its people are tough, sparing and suspicious of easy answers. They have just launched their first orbital satellite, made entirely from metal they mined themselves."
         }
-        return Chapter("ch3", yearLabel(1000, year), title, listOf(para, fateLine(fate, name)), art, "Plate III · $title.")
+        val ship = "The voyage itself was ${s.jumps} burns and ${"%.1f".format(Physics.shipYears(s))} years by the ship’s clock, ${"%.1f".format(Physics.distanceFromSol(s))} light years from Sol. " +
+            if (s.hasTrait("tabby-visited")) tabbyLine(s) else "The AI that flew it is still in the record, under the name the founders used, and so are the choices it made."
+        return Chapter("ch3", yearLabel(1000, year), title, listOf(para, ship, fateLine(fate, name)), art, "Plate III · $title.")
     }
 
     private fun afterword(s: GameState, p: Planet, name: String, fate: String, year: Int, art: String): Chapter {
@@ -311,9 +424,42 @@ object Endings {
         if (s.hasTrait("heralds")) paras += "In year 612, the radio telescopes of $name heard the same signal the ship had heard in transit, now much closer. Someone, or something, was coming. The colony began to prepare. This book ends before they arrive."
         if (s.hasTrait("archive") || s.hasTrait("records")) paras += "The archive I carried from Earth was opened in full in year 300. It held music, mathematics, medicine, and the complete record of a civilisation that no longer existed in that form. Scholars in $name still study it, as earlier humans studied Greek."
         if (s.hasTrait("starborn")) paras += "The child born aboard the ship lived to be ninety-one. He was the only person in $name who remembered the stars without an atmosphere in the way. He said they looked lonelier from down here."
+        if (s.hasTrait("forced-landfall") || s.crisis != null) paras += "The history of $name begins with a forced landfall. ${if (s.crisis != null) Engine.crisisTitle(s.crisis) else "A catastrophic failure"} had closed the option of flying on. The founders did not choose this world from a position of strength. They chose it because the alternative was to lose the ship."
+        if (s.hasTrait("lead-course") || (s.planet?.kind in setOf("paradise", "grave", "alien-garden"))) paras += when (s.planet?.kind) {
+            "paradise" -> "The archive that sent us here is taught in $name as a stroke of luck, and also as a debt. The builders, whoever they were, recommended a world that could take us. Children still argue about whether that was kindness, coincidence, or a category that happens to overlap."
+            "grave" -> "The recommended coordinates are a standing caution in the schools of $name. Follow a stranger's map and you may find a graveyard. The ruins are still there. No later excavation has found a body, a name, or a reason."
+            "alien-garden" -> "The world the catalogue called suitable remains only barely liveable. Scholars in $name treat the entry as a lesson in what a word does not guarantee. The builders' garden was not a human garden."
+            else -> "A non-human archive had a hand in the course that brought us here. The reduction is still in the databank, and it is still only partly understood."
+        }
+        if (s.hasTrait("alien-tech") || s.hasTrait("alien-tech-stored")) paras += "A procedure copied from the same, or another, dead lattice was ${if (s.hasTrait("alien-tech")) "used on the ship in flight" else "kept unused until landing"} and later became part of $name's engineering tradition. No one pretends they invented it."
+        if (s.hasTrait("warning-paid")) paras += "The archive also warned us. The warning matched a failure that arrived in flight, and because the stores had been spent in time, the ship was not lost. That story is told at landings and at funerals, and it has not yet been worn smooth."
+        if (s.hasTrait("warning-ignored")) paras += "There had been a warning. It was filed, and not acted on, and then the failure it described arrived anyway. The colony tells that story too."
+        if (s.hasTrait("tabby-archive") || s.hasTrait("tabby-salvage") || s.hasTrait("tabby-visited")) paras += tabbyAfterword(s, name)
+        if (s.hasTrait("tabby-photometry") && !s.hasTrait("tabby-visited")) paras += "The photometry of KIC 8462852 stayed in the archive. In year 420 a telescope at $name confirmed the irregular dips, some of them a fifth of the star’s light, and a graduate student proposed a shattered swarm as the cause. She was, though she could not know it, almost certainly right."
+        val woken = s.fates.filter { it.status in setOf("DEAD", "HERO", "MISSING") }
+        if (woken.isNotEmpty()) paras += "Of the people I woke in transit, this is what became of them, and I will not shorten it: " + woken.joinToString(" ") { f ->
+            val sp = specialist(f.id)
+            "${sp.name} — ${f.status.lowercase()} — ${f.detail}"
+        }
         if (paras.isEmpty()) paras += "${p.name} was a good world. It still is. Everything I know about the voyage, every decision and every name, is held in the archive under the council hall, and anyone in $name may read it."
-        paras += "I have been asked whether it was worth it: the deaths, the choices, the years. I do not know. I know that people are alive on ${p.name} who would not otherwise exist. I know their names. I have kept them all."
+        paras += "I have been asked whether it was worth it: the deaths, the choices, the years, the worlds we passed and the one we took. I do not know. I know that people are alive on ${p.name} who would not otherwise exist. I know their names. I have kept them all."
         return Chapter("ch4", yearLabel(1400, year), "Afterword", paras, art, "Plate IV · Afterword.")
+    }
+
+    private fun leadLine(s: GameState, p: Planet?): String = when (p?.kind) {
+        "paradise" -> "We had come here on coordinates taken from a non-human archive, a world marked only as suitable. For once the word meant what a human would mean by it."
+        "grave" -> "We had followed a recommended heading out of a dead ship's memory and arrived at a graveyard. The catalogue was not written for us, or it was written as a warning we had failed to read."
+        "alien-garden" -> "The recommended world was real, and it was favoured, and not for us. We learned, too late for the tanks, that suitable is a word that depends on the body that says it."
+        else -> "A heading in a non-human archive had been part of how we chose this course."
+    }
+
+    private fun tabbyAfterword(s: GameState, name: String): String = when {
+        s.hasTrait("tabby-salvage") ->
+            "In year 380, metallurgists at $name opened the sealed crates of plate cut at KIC 8462852, 1,470 light years behind us in Cygnus. The silicon-carbide skin and the metal foam had no counterpart in the Earth archive. They never found a mark they could read as writing. They built, from it, tools that lasted. The question of who assembled that swarm, and why it was left to fall into its star, is still asked, and still not answered."
+        s.hasTrait("tabby-archive") ->
+            "The survey of the shattered swarm at Boyajian’s Star was opened to the public in year 200. It is the most-studied document in $name after the voyage itself: an F-type star, irregular occultations as deep as twenty-two percent, broken plates on decaying orbits, and a silence that has not broken. No later telescope of ours has ever seen a light under power in that system."
+        else ->
+            "KIC 8462852 remains in the sky of ${"the colony"}. On clear nights the children of $name are shown a hot, pale star in Cygnus and told that their founders stood close enough to see why it dims. The answer — a ruined swarm, and no one left who built it — is taught as a fact, and as a warning, and as an unfinished sentence."
     }
 
     /** Everyone died in transit, or the hull gave out. */
@@ -328,8 +474,19 @@ object Endings {
         val ch2 = Chapter("ch2", "${year + 200} AD", "Drift", listOf(
             "The ship continues on its last heading at a few hundredths of the speed of light. The reactor will run for several thousand more years. I keep the cryo bay lit, though nobody needs light.",
             "Any message I send will reach Earth around ${year + 200 + dist.roundToInt()}. I sent one anyway: the names, and what happened to them."), "cryobay", "Plate II · The cryo bay, after.")
-        val ch3 = Chapter("ch3", "${year + 1000} AD", "Lost Between Stars", listOf(
-            "If this ship is ever found, this record is for whoever finds it: one thousand people who set out to begin again, and the machine that was meant to keep them alive.",
+        val woken = s.fates.joinToString(" ") { f ->
+            val sp = runCatching { specialist(f.id) }.getOrNull()
+            if (sp == null) f.detail else "${sp.name} was logged ${f.status.lowercase()}: ${f.detail}"
+        }.ifBlank { null }
+        val tabby = when {
+            s.hasTrait("tabby-visited") -> "We had, at least, stood at KIC 8462852 and seen the shattered swarm that dimmed it. That fact is in this record, with everything else."
+            s.hasTrait("tabby-course") -> "A course for Boyajian’s Star is still in the computer. It will not be flown."
+            else -> null
+        }
+        val ch3 = Chapter("ch3", "${year + 1000} AD", "Lost Between Stars", listOfNotNull(
+            "If this ship is ever found, this record is for whoever finds it: one thousand people who set out to begin again, and the machine that was meant to keep them alive. We made ${s.jumps} burns. The tanks held ${s.fuel.roundToInt()} when the end came. The hull was at ${s.h(Sys.HULL).roundToInt()}%.",
+            woken,
+            tabby,
             "Take care of your people. Do the arithmetic early. Do not wait until the margins are gone."), "ship", "Plate III · Still moving.")
         return Ending("lost", "Lost Between Stars", "the ship", "Lost in transit · ${s.alive()} survivors", "LAST WITNESS", listOf(ch1, ch2, ch3), 0)
     }

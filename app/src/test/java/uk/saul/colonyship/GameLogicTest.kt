@@ -119,7 +119,7 @@ class GameLogicTest {
                     Phase.CRUISE -> Engine.jump(s)
                     Phase.EVENT -> Engine.choose(s, (seed % 2).toInt())
                     Phase.OUTCOME -> Engine.arrive(s)
-                    Phase.ORBIT -> if (s.jumps >= target + 1) Engine.settle(s, 1L) else Engine.jump(s)
+                    Phase.ORBIT -> if (s.jumps >= target + 1 || !Engine.canDepart(s)) Engine.settle(s, 1L) else Engine.jump(s)
                     Phase.ENDED -> s
                 }
             }
@@ -223,5 +223,129 @@ class GameLogicTest {
     @Test fun writingAvoidsOldJokesAndAmericanSpelling() {
         val text = Events.all.joinToString(" ") { e -> e.title + " " + e.choices.joinToString(" ") { it.title + " " + it.desc } }
         listOf("jump drive", "warp", "Warp", "color", "center ", "meter ", "lol").forEach { assertFalse("found '$it'", text.contains(it)) }
+    }
+
+    @Test fun fuelIsSpentOnABurnAndBlocksWhenEmpty() {
+        val s = Engine.jump(fresh())
+        assertTrue("fuel ${s.fuel}", s.fuel < 100.0)
+        assertTrue(s.fuel >= 0.0)
+        val empty = fresh(); empty.fuel = 0.0
+        val blocked = Engine.jump(empty)
+        assertEquals(0, blocked.jumps)
+        assertEquals(Phase.CRUISE, blocked.phase)
+    }
+
+    @Test fun planetsHaveRealVariance() {
+        var earth = 0; var hell = 0
+        for (seed in 1L..400L) {
+            val p = PlanetGen.generate(Random(seed), 3, 40.0)
+            if (p.quality == "EARTHLIKE") earth++
+            if (p.quality == "HELLISH") hell++
+        }
+        assertTrue("earthlike=$earth", earth in 10..60)
+        assertTrue("hellish=$hell", hell in 40..120)
+        val paradise = PlanetGen.generateLead(Random(1), "paradise", 20.0)
+        val grave = PlanetGen.generateLead(Random(2), "grave", 20.0)
+        assertEquals("EARTHLIKE", paradise.quality)
+        assertEquals("paradise", paradise.kind)
+        assertEquals("HELLISH", grave.quality)
+        assertTrue(Endings.habScore(paradise) > Endings.habScore(grave) + 8)
+    }
+
+    @Test fun humanArtefactsStayNearSol() {
+        val near = fresh(); near.jumps = 2; near.posX = 10.0
+        val far = fresh(); far.jumps = 8; far.posX = 80.0
+        assertTrue(Events.byId("probe")!!.condition(near))
+        assertFalse(Events.byId("probe")!!.condition(far))
+        assertTrue(Events.byId("overtaken")!!.condition(near))
+        assertFalse(Events.byId("overtaken")!!.condition(far))
+        assertTrue(Physics.distanceFromSol(far) > Physics.HUMAN_RELIC_LY)
+    }
+
+    @Test fun tabbyIsANamedDetour() {
+        val s = fresh(); s.jumps = 3; s.fuel = 100.0
+        val ev = Events.byId("tabby_beacon")!!
+        assertTrue(ev.condition(s))
+        s.currentEvent = ev.id; s.phase = Phase.EVENT
+        s.log += LogEntry("t", 0, ev.id, ev.title, ev.kicker, ev.art)
+        val diverted = Engine.choose(s, 0)
+        assertEquals("tabby", diverted.course)
+        assertTrue(diverted.hasTrait("tabby-course"))
+        val arrived = Engine.jump(diverted)
+        assertTrue(arrived.hasTrait("tabby-visited"))
+        assertEquals("tabby_swarm", arrived.currentEvent)
+        assertEquals(Physics.TABBY_LY, Physics.distanceFromSol(arrived), 0.8)
+        assertTrue("fuel ${arrived.fuel}", arrived.fuel < diverted.fuel)
+        assertTrue(arrived.fuel > 40.0) // scoop-fed coast, not a 1470-unit drain
+        val swarm = Events.byId("tabby_swarm")!!
+        assertFalse(swarm.condition(arrived))
+        assertTrue(swarm.choices.size in 2..3)
+    }
+
+    @Test fun derelictMemoryStartsADecode() {
+        val s = fresh(); s.day = 200; s.jumps = 2
+        val ev = Events.byId("derelict")!!
+        s.currentEvent = ev.id; s.phase = Phase.EVENT
+        s.log += LogEntry("d", 0, ev.id, ev.title, ev.kicker, ev.art)
+        val out = Engine.choose(s, 1) // Read its memory
+        assertNotNull(out.insight)
+        assertTrue(out.insightLeft in 1..3)
+        assertTrue(out.hasTrait("archive"))
+        // Finish the reduction by jumping the remaining coasts.
+        var t = Engine.arrive(out)
+        var guard = 0
+        while (t.insight != null && t.phase != Phase.ENDED && guard++ < 8) {
+            t = when (t.phase) {
+                Phase.ORBIT, Phase.CRUISE -> Engine.jump(t)
+                Phase.EVENT -> if (t.currentEvent?.startsWith("decode_") == true || t.currentEvent == "signal_reply") break else Engine.choose(t, 1)
+                Phase.OUTCOME -> Engine.arrive(t)
+                else -> break
+            }
+        }
+        assertTrue("event=${t.currentEvent} insight=${t.insight}", t.currentEvent in setOf("decode_world", "decode_tech", "decode_warn", "signal_reply") || t.insight == null)
+    }
+
+    @Test fun crisisForcesLandfallInAMinorityOfLongRuns() {
+        var crises = 0; var forcedEndings = 0
+        val jumps = mutableListOf<Int>()
+        val types = mutableSetOf<String>()
+        var earth = 0; var hell = 0; var tabbySeen = 0; var tabbyVisited = 0
+        var decode = 0
+        for (seed in 1L..500L) {
+            var s = fresh(seed)
+            var guard = 0
+            while (s.phase != Phase.ENDED && guard++ < 80) {
+                s = when (s.phase) {
+                    Phase.CRUISE -> Engine.jump(s)
+                    Phase.EVENT -> {
+                        if (s.currentEvent == "tabby_beacon") tabbySeen++
+                        if (s.currentEvent?.startsWith("decode_") == true || s.currentEvent == "signal_reply") decode++
+                        Engine.choose(s, 0)
+                    }
+                    Phase.OUTCOME -> Engine.arrive(s)
+                    Phase.ORBIT -> {
+                        val p = s.planet
+                        if (p?.quality == "EARTHLIKE") earth++
+                        if (p?.quality == "HELLISH") hell++
+                        val settle = !Engine.canDepart(s) || s.jumps >= 10 || (p != null && p.quality == "EARTHLIKE") || (s.crisis != null && s.crisisLeft == 0)
+                        if (settle) Engine.settle(s, 1L) else Engine.jump(s)
+                    }
+                    Phase.ENDED -> s
+                }
+            }
+            assertEquals("seed $seed", Phase.ENDED, s.phase)
+            jumps += s.jumps
+            s.ending?.id?.let { types += it }
+            if (s.crisis != null || s.hasTrait("forced-landfall")) { crises++; forcedEndings++ }
+            if (s.hasTrait("tabby-visited")) tabbyVisited++
+        }
+        val avg = jumps.average()
+        val mid = jumps.sorted()[jumps.size / 2]
+        println("v0.3 sim 500: jumps avg=${"%.2f".format(avg)} median=$mid min=${jumps.min()} max=${jumps.max()} endings=$types crises=$crises tabbySeen=$tabbySeen tabbyVisited=$tabbyVisited earthOrbits=$earth hellOrbits=$hell decodeEvents=$decode")
+        assertTrue("avg jumps $avg", avg in 5.0..14.0)
+        assertTrue("median $mid", mid in 5..12)
+        assertTrue("ending variety $types", types.size >= 4)
+        // A minority of runs, not none and not most.
+        assertTrue("crises $crises / 500", crises in 20..220)
     }
 }

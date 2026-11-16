@@ -100,17 +100,38 @@ private fun VoyagePanel(g: GameController, s: GameState) {
             FlowChips(s.lastJumpReport.take(10).map { it to (it.startsWith("−") && it.contains("POD") || it.contains("EXHAUSTED") || it.contains("FAILING") || it == "BROWNOUT") })
             Spacer(Modifier.height(8.dp))
         }
+        if (s.phase == Phase.CRUISE || s.phase == Phase.ORBIT) {
+            BurnRiskLine(s)
+            Spacer(Modifier.height(8.dp))
+        }
         when (s.phase) {
             Phase.CRUISE, Phase.ORBIT -> {
-                val t = Engine.plannedTransit(s)
-                ConsoleKey(if (s.jumps == 0 && s.phase == Phase.CRUISE) "LIGHT THE DRIVE" else "BURN FOR NEXT STAR", Modifier.fillMaxWidth(), KeyStyle.ORANGE, height = 50.dp, textSize = 16,
-                    sub = "−${Engine.JUMP_COST.roundToInt()} PWR · ${"%.1f".format(s.nextStarLy)} LY · ${"%.2f".format(t.beta)}c · ${"%.1f".format(t.shipYears)} SHIP / ${"%.1f".format(t.earthYears)} EARTH YRS", cueType = Cue.SELECT) { g.jump() }
-                if (s.phase == Phase.ORBIT) Text("We are in orbit of ${s.planet?.name}. Burning for the next star means leaving it behind for good.", style = body(11.sp, C.muted), modifier = Modifier.padding(top = 6.dp))
+                val tr = Engine.plannedTransit(s)
+                val risk = Engine.burnRisk(s)
+                val dest = when (s.course) {
+                    "tabby" -> "KIC 8462852 · ${"%.0f".format(Physics.remainingToTabby(s))} LY"
+                    "lead" -> "CATALOGUE WORLD · ${"%.1f".format(s.nextStarLy)} LY"
+                    else -> "${"%.1f".format(s.nextStarLy)} LY"
+                }
+                ConsoleKey(
+                    if (s.jumps == 0 && s.phase == Phase.CRUISE) "LIGHT THE DRIVE" else if (s.inCrisis() && s.crisisLeft > 0) "RISK ONE MORE BURN" else "BURN FOR NEXT STAR",
+                    Modifier.fillMaxWidth(), if (s.inCrisis()) KeyStyle.ON else KeyStyle.ORANGE, height = 50.dp, textSize = 16,
+                    enabled = Engine.canDepart(s),
+                    sub = "−${risk.fuelCost.roundToInt()} FUEL · −${Engine.JUMP_COST.roundToInt()} PWR · $dest · ${"%.2f".format(tr.beta)}c · ${"%.1f".format(tr.shipYears)} SHIP / ${"%.1f".format(tr.earthYears)} EARTH YRS",
+                    cueType = Cue.SELECT
+                ) { g.jump() }
+                if (s.phase == Phase.ORBIT) Text(
+                    if (s.inCrisis()) "We are in orbit of ${s.planet?.name}. This is a forced landfall. Leave only if you are prepared to lose the ship."
+                    else "We are in orbit of ${s.planet?.name}. Burning for the next star means leaving it behind for good.",
+                    style = body(11.sp, C.muted), modifier = Modifier.padding(top = 6.dp)
+                )
             }
             Phase.EVENT -> ConsoleKey("INCIDENT PENDING · OPEN EVENTS", Modifier.fillMaxWidth(), KeyStyle.ON, height = 44.dp) { g.tab = Tab.EVENTS }
             Phase.OUTCOME -> ConsoleKey("BRAKE INTO THE NEXT SYSTEM", Modifier.fillMaxWidth(), KeyStyle.TEAL, height = 44.dp) { g.arrive() }
             Phase.ENDED -> ConsoleKey("READ THE HISTORY BOOK", Modifier.fillMaxWidth(), KeyStyle.CREAM, height = 44.dp) { g.tab = Tab.ARCHIVE }
         }
+        Spacer(Modifier.height(8.dp))
+        ConsoleKey("STELLAR CARTOGRAPHY", Modifier.fillMaxWidth(), KeyStyle.DARK, height = 40.dp, textSize = 13, sub = "ROUTE FROM SOL · ${s.route.size} STOPS") { g.chartOpen = true }
     }
 }
 
@@ -275,16 +296,36 @@ fun PowerSlider(value: Int, teal: Boolean, modifier: Modifier, onChange: (Int) -
 @Composable
 private fun HealthPanel(s: GameState) {
     val warnings = Sys.entries.count { s.h(it) < 50 }
+    val pulse = rememberInfiniteTransition(label = "mod")
+    val flash by pulse.animateFloat(0.55f, 1f, infiniteRepeatable(tween(650), RepeatMode.Reverse), label = "f")
     Panel {
-        SectionTitle("03", "SYSTEM HEALTH", if (warnings > 0) "$warnings WARNING${if (warnings > 1) "S" else ""}" else "ALL NOMINAL", if (warnings > 0) C.warn else C.glow, if (warnings > 0) Color(0xFFFFC23A) else null)
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Sys.entries.forEach { sys ->
-                val v = s.h(sys)
-                Column(horizontalAlignment = Alignment.CenterHorizontally, modifier = Modifier.weight(1f)) {
-                    Dial((v / 100).toFloat(), Modifier.size(50.dp, 30.dp))
-                    Spacer(Modifier.height(3.dp))
-                    Text(sys.short, style = label(7.5.sp, if (v < 50) C.bad else C.cream, 0.06f), maxLines = 1, textAlign = TextAlign.Center)
-                    Text("${v.roundToInt()}%", style = vfd(15.sp, healthColor(v)))
+        SectionTitle("03", "SHIP SYSTEMS", if (warnings > 0) "$warnings WARNING${if (warnings > 1) "S" else ""}" else "ALL NOMINAL", if (warnings > 0) C.warn else C.glow, if (warnings > 0) Color(0xFFFFC23A) else null)
+        Sys.entries.chunked(3).forEach { row ->
+            Row(Modifier.fillMaxWidth().padding(vertical = 2.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                row.forEach { sys ->
+                    val v = s.h(sys)
+                    val col = healthColor(v)
+                    Column(
+                        Modifier.weight(1f).graphicsLayer { alpha = if (v < 40) flash else 1f }
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFF120C08))
+                            .border(1.dp, col.copy(alpha = 0.55f), RoundedCornerShape(4.dp))
+                            .padding(horizontal = 6.dp, vertical = 5.dp)
+                    ) {
+                        Text(sys.short, style = label(7.5.sp, if (v < 50) C.bad else C.cream, 0.08f), maxLines = 1)
+                        Text("${v.roundToInt()}%", style = vfd(18.sp, col))
+                    }
+                }
+            }
+        }
+        if (s.damageLog.isNotEmpty()) {
+            Spacer(Modifier.height(8.dp))
+            Text("DAMAGE LOG", style = label(9.sp, C.mustard, 0.14f))
+            s.damageLog.take(5).forEach { n ->
+                Column(Modifier.padding(top = 4.dp)) {
+                    Text("DAY ${n.day} · ${n.earthYear} AD · ${n.sys}", style = label(8.sp, C.teal, 0.08f))
+                    Text(n.title, style = body(12.sp, C.cream))
+                    Text(n.consequence, style = body(11.sp, C.muted))
                 }
             }
         }
@@ -317,9 +358,25 @@ private fun AwakePanel(s: GameState) {
         SectionTitle("05", "AWAKE CREW", "${s.awake.size} AWAKE · TRUST ${if (s.trust >= 0) "+" else ""}${s.trust}", if (s.trust < 0) C.bad else C.glow)
         s.awake.forEach { id ->
             val sp = specialist(id)
+            val fate = s.fateOf(id)
             Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
                 Lamp(Color(0xFF3FE0B0), 6.dp); Spacer(Modifier.width(6.dp))
-                Text(sp.name, style = body(12.sp, C.cream)); Spacer(Modifier.weight(1f)); Text(sp.role.uppercase(), style = label(9.sp, C.teal))
+                Column(Modifier.weight(1f)) {
+                    Text(sp.name, style = body(12.sp, C.cream))
+                    if (fate != null) Text(fate.status + " · " + fate.detail, style = body(10.sp, C.muted), maxLines = 2)
+                }
+                Text(sp.role.uppercase(), style = label(9.sp, C.teal))
+            }
+        }
+        s.fates.filter { it.status == "DEAD" || it.status == "MISSING" }.forEach { fate ->
+            val sp = specialist(fate.id)
+            Row(Modifier.padding(vertical = 2.dp), verticalAlignment = Alignment.CenterVertically) {
+                Lamp(Color(0xFFFF3B1F), 6.dp); Spacer(Modifier.width(6.dp))
+                Column(Modifier.weight(1f)) {
+                    Text(sp.name, style = body(12.sp, C.bad))
+                    Text(fate.detail, style = body(10.sp, C.muted), maxLines = 2)
+                }
+                Text(fate.status, style = label(9.sp, C.bad))
             }
         }
     }

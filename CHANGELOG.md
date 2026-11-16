@@ -2,6 +2,28 @@
 
 All notable changes to Colony Ship. Versions follow semver.
 
+## [0.3.0] - 2026-11-16
+
+Shorter, higher-stakes voyages, a clearer ship, and rarer wonders — from Saul's playtest of 0.2.1 and later notes.
+
+### Added
+- **Fuel:** a real propellant reserve (boost and brake), shown in a pinned status ribbon with power, hull and colonist counts. Typical burns cost 8–15; a voyage is now about 8–12 jumps, not a long wander.
+- **Burn risk** is shown before each departure, and rises with jump count, wear and a thinning tank.
+- **Ship systems console:** nine colour-graded modules (scanners, engines, hull, power core, cryo, landing bay, databank and the rest) with percentages, a pulsing red state when a system is in the red, and a damage log that states the failure and what it does to the game.
+- **Planets** now range from rare Earth-analogues to genuinely hellish worlds (tidally locked furnaces, crushing atmospheres, sterilising radiation, acid seas, rogue worlds). The survey states a clear verdict.
+- **Woken passengers** are named, and their fates are resolved in later events and in the history book.
+- **Deep-space mysteries:** more than ten new hard-SF signal and anomaly events, far from Sol. Human artefacts (the 2080s probe, the overtaking ship) now only appear near the Sun. A letter from Earth can still catch up anywhere; it is a delayed transmission, not a found relic.
+- **Tabby's Star** (KIC 8462852, Boyajian's Star): a named rare encounter. A distant-photometry beacon can offer a 1,470-light-year detour to Cygnus. The fuel cost is a boost and a brake, not a 1,470-unit drain; the real price is centuries of coast and wear. Arrival reveals a shattered ancient Dyson swarm as the cause of the irregular dips (up to ~22%). The builders are not explained. Salvage, survey or pass by; the history book remembers.
+- **Stellar cartography:** a 70s star chart, opened from the console, with Sol at the origin, the route as a line, notable stops (signals, Tabby's Star, a recommended world, a forced landfall, the settled planet) marked, and tappable nodes showing name, distance from Sol, Earth year of arrival and ship time. The history book includes a map page of the voyage.
+- **Forced landfall:** rare catastrophic failures (reactor containment, cascading cryo, hull fatigue, coolant loss) whose chance rises with jump count and wear. A red alert and a strong haptic; you must settle at the next world, or risk one more burn that can kill the colony or the ship. The history book calls it a forced landfall. It happens in a minority of runs.
+- **Alien data that pays off:** reading a derelict's memory (and several other signals) starts a databank reduction that finishes a jump or two later. The result is one of: coordinates to a recommended world (sometimes a genuine paradise, sometimes a graveyard or a world favoured by alien criteria, with clues before you divert); a procedure that repairs or upgrades a system; or a warning that can later match a real failure, if you prepared. The history book records what you learned, and what you did with it.
+- Longer, more detailed history-book chapters, tying together the planet, the woken crew, sacrifices, the ship's state, and the AI's standing.
+
+### Changed
+- Legs between stars are shorter (typically a few light years). Wear, event severity and pod failure all rise with each burn and with ship age.
+- Image and video prompt buttons are smaller, in a compact row under pictures.
+- British English and hard-SF tone unchanged.
+
 ## [0.2.1] - 2026-11-14
 
 Haptics fix, from playtesting 0.2.0 on a Samsung Galaxy A54.

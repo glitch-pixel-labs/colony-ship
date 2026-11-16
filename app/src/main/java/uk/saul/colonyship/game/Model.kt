@@ -12,7 +12,8 @@ enum class Channel(val label: String, val need: Int) {
 /** Ship systems with health 0..100. */
 enum class Sys(val label: String, val short: String) {
     LIFE("Life Support", "LIFE SUPPORT"), SCAN("Scanners", "SCANNERS"), SHIELD("Shields", "SHIELDS"),
-    ENGINE("Engines", "ENGINES"), HULL("Hull", "HULL"), CRYO("Cryo Array", "CRYO ARRAY")
+    ENGINE("Engines", "ENGINES"), HULL("Hull", "HULL"), CRYO("Cryo Array", "CRYO ARRAY"),
+    CORE("Power Core", "POWER CORE"), LANDER("Landing Bay", "LANDER"), DATA("Databank", "DATABANK")
 }
 
 enum class Phase { CRUISE, EVENT, OUTCOME, ORBIT, ENDED }
@@ -53,6 +54,10 @@ data class Planet(
     val life: Int,           // 0 none, 1 microbial, 2 plants, 3 animals, 4 signs of others
     val features: List<String>,
     val hue: Float,          // tint for the painted planet
+    /** EARTHLIKE, PROMISING, MARGINAL, HOSTILE, HELLISH */
+    val quality: String = "MARGINAL",
+    /** earthlike, furnace, crushing, radiation, acid, rogue, vacuum, garden, mixed, … */
+    val kind: String = "mixed",
     // Observations from scans: null = SCANNER DAMAGED for that row
     val obs: Map<String, Observation> = emptyMap(),
     val passes: Int = 0,
@@ -84,6 +89,28 @@ data class Ending(
 )
 
 @Serializable
+data class CrewFate(val id: String, val status: String, val detail: String, val day: Int, val earthYear: Int = 0)
+
+@Serializable
+data class DamageNote(val day: Int, val earthYear: Int, val sys: String, val title: String, val consequence: String)
+
+/** One plotted stop on the stellar cartography chart. */
+@Serializable
+data class ChartStop(
+    val id: String,
+    val name: String,
+    val x: Double,
+    val y: Double,
+    val z: Double,
+    val ly: Double,
+    val earthYear: Int,
+    val shipYears: Double,
+    /** sol, system, tabby, signal, crisis, settled */
+    val kind: String,
+    val note: String,
+)
+
+@Serializable
 data class GameState(
     val runId: String,
     val runNumber: Int,
@@ -109,6 +136,25 @@ data class GameState(
     /** 1000 chars: 'S' stable, 'F' failing, 'L' lost. */
     var pods: String = "S".repeat(TOTAL_PODS),
     var reserve: Double = 40.0,
+    /** Reaction-mass / deuterium reserve, 0..100. Scoop-fed coast does not drain this; boost and brake do. */
+    var fuel: Double = 100.0,
+    /** Special course, e.g. "tabby" for a burn toward KIC 8462852. */
+    var course: String? = null,
+    /** Kind of ship-killing failure, e.g. "reactor", "cryo", "hull", "coolant". */
+    var crisis: String? = null,
+    /** Remaining legal burns after a crisis. 1 = may risk one more jump; 0 = must settle. */
+    var crisisLeft: Int = 0,
+    /**
+     * A delayed payoff from alien data or signals: "world", "tech", "warning", or "reply".
+     * [insightLeft] is jumps remaining before the reduction is ready.
+     * [insightPayload] holds the hidden result (paradise/grave/alien, a system name, a crisis kind).
+     */
+    var insight: String? = null,
+    var insightLeft: Int = 0,
+    var insightPayload: String? = null,
+    /** When set, the next arrival should generate this special recommended world. */
+    var leadWorld: String? = null,
+    val route: MutableList<ChartStop> = mutableListOf(),
     var air: Double = 100.0,
     var food: Double = 100.0,
     var water: Double = 100.0,
@@ -116,6 +162,8 @@ data class GameState(
     var trust: Int = 0,
     val traits: MutableList<Trait> = mutableListOf(),
     val awake: MutableList<String> = mutableListOf(),
+    val fates: MutableList<CrewFate> = mutableListOf(),
+    val damageLog: MutableList<DamageNote> = mutableListOf(),
     val log: MutableList<LogEntry> = mutableListOf(),
     val seenEvents: MutableList<String> = mutableListOf(),
     var currentEvent: String? = null,
@@ -134,8 +182,10 @@ data class GameState(
     fun lost() = pods.count { it == 'L' }
     fun stable() = pods.count { it == 'S' }
     fun drawn() = power.values.sum()
-    fun h(s: Sys) = health[s] ?: 0.0
+    fun h(s: Sys) = health[s] ?: 100.0
     fun hasTrait(id: String) = traits.any { it.id == id }
+    fun fateOf(id: String) = fates.lastOrNull { it.id == id }
+    fun inCrisis() = crisis != null
     fun deepCopy(): GameState = JSON.decodeFromString(serializer(), JSON.encodeToString(this))
 }
 
@@ -162,6 +212,7 @@ data class RunRecord(
     val earthYear: Int = 0,
     val distanceLy: Double = 0.0,
     val shipYears: Double = 0.0,
+    val route: List<ChartStop> = emptyList(),
 )
 
 fun GameState.toRecord() = RunRecord(
@@ -169,4 +220,5 @@ fun GameState.toRecord() = RunRecord(
     alive(), day, jumps, ending?.aiFate ?: "", traits.toList(), ending?.chapters ?: emptyList(), log.toList(), planet,
     ending?.score ?: 0, endedAt,
     Physics.earthYear(this), Physics.distanceFromSol(this), Physics.shipYears(this),
+    route.toList(),
 )

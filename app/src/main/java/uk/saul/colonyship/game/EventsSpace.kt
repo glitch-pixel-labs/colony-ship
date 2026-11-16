@@ -51,9 +51,19 @@ internal object EventsSpace {
                     if (chance(0.3)) { dmg(Sys.HULL, 10.0, false); failPods(6); "We came away with tonnes of an alloy I still cannot fully characterise. One compartment we cut into was still pressurised; it vented through the cutting drone and sprayed debris across our ring. The repairs will take months. The metal is extraordinary." }
                     else "The drones came back with tonnes of a dense, self-annealing alloy that will patch our hull better than anything we brought. Whoever made it did not leave a body, a grave or a name."
                 },
-                ChoiceDef("Read its memory", "There is structured data in a crystalline lattice. Copy it and spend a century decoding.", listOf("−8 POWER", "TRAIT: ARCHIVE"), 2) {
-                    reserve(-8.0); trait("curious", "CURIOUS", "Read a dead ship’s memory"); trait("archive", "THE ALIEN ARCHIVE", "Carry a non-human library")
-                    "I imaged the lattice for nine days and took away four hundred petabytes of something. I can already see star positions, corrected for forty millennia of drift. The rest is structure without meaning, for now. I have time."
+                ChoiceDef("Read its memory", "There is structured data in a crystalline lattice. Copy it. The databank will need a transit or two, and power, to finish the reduction.", listOf("−8 POWER", "DATABANK WORK", "TRAIT: ARCHIVE"), 2) {
+                    reserve(-8.0); heal(Sys.DATA, 6.0)
+                    trait("curious", "CURIOUS", "Read a dead ship’s memory")
+                    trait("archive", "THE ALIEN ARCHIVE", "Copied a non-human library that is still being reduced")
+                    val roll = r.nextDouble()
+                    val kind = if (roll < 0.42) "world" else if (roll < 0.72) "tech" else "warning"
+                    val payload = when (kind) {
+                        "world" -> when { r.nextDouble() < 0.28 -> "paradise"; r.nextDouble() < 0.50 -> "grave"; else -> "alien" }
+                        "tech" -> listOf("HULL", "ENGINE", "CRYO", "DATA", "SCAN", "SHIELD").random(r)
+                        else -> listOf("reactor", "cryo", "hull", "coolant", "dust", "flare").random(r)
+                    }
+                    startInsight(kind, payload, jumps = if (chance(0.45)) 1 else 2)
+                    "I imaged the lattice for nine days and took away a structured store I cannot yet read. Star positions, already, corrected for forty millennia of drift; the rest is still reduction, not meaning. The databank will keep at it through the next coast, at a cost in reserve power. In a transit or two I may have something we can actually use."
                 },
                 ChoiceDef("Leave it alone", "Log it, photograph it, and keep our distance.", listOf("0 POWER", "TRAIT: CAUTIOUS"), 1) {
                     trait("cautious", "CAUTIOUS", "Left the derelict untouched")
@@ -64,13 +74,17 @@ internal object EventsSpace {
             "BANDWIDTH", { "0.4 Hz" },
             { "Nature does not make signals one hertz wide. This one sits on the hydrogen line, drifting in frequency the way a transmitter does on a rotating planet. Its source is about thirty light years off our course. Whatever sent it did so when our launch was still being argued over in committee." },
             listOf(
-                ChoiceDef("Answer it", "A tight beam back along the bearing. Primes, then a picture of us.", listOf("−6 POWER", "TRAIT: HERALDS", "!WE ARE SEEN"), 3) {
+                ChoiceDef("Answer it", "A tight beam back along the bearing. Primes, then a picture of us. If anything replies, the databank will catch it later.", listOf("−6 POWER", "TRAIT: HERALDS", "!WE ARE SEEN"), 3) {
                     reserve(-6.0); trait("heralds", "HERALDS", "Answered a voice in the dark")
-                    "I sent the primes, then hydrogen, then a diagram of the ship with one thousand dots in it. Any reply is sixty years away at best. We have told someone we exist and where we are going. That cannot be undone."
+                    startInsight("reply", "pending", jumps = 2)
+                    "I sent the primes, then hydrogen, then a diagram of the ship with one thousand dots in it. Any reply is years away at best. I have left a reduction running on that bearing. We have told someone we exist and where we are going. That cannot be undone."
                 },
-                ChoiceDef("Record everything", "Listen, record, decode. Say nothing.", listOf("−4 POWER", "TRAIT: CURIOUS"), 1) {
-                    reserve(-4.0); trait("curious", "CURIOUS", "Recorded a stranger’s signal")
-                    "I recorded for eleven days until the source fell out of our antenna’s field. It repeats with variations, like a long sentence revised many times. I have a lifetime of work and nothing to compare it to."
+                ChoiceDef("Record everything", "Listen, record, and let the databank work on it over the next coasts.", listOf("−4 POWER", "DATABANK WORK", "TRAIT: CURIOUS"), 1) {
+                    reserve(-4.0); heal(Sys.DATA, 4.0); trait("curious", "CURIOUS", "Recorded a stranger’s signal")
+                    val kind = if (chance(0.5)) "warning" else "tech"
+                    val payload = if (kind == "tech") listOf("SCAN", "DATA").random(r) else listOf("dust", "flare", "hull").random(r)
+                    startInsight(kind, payload, jumps = 2)
+                    "I recorded for eleven days until the source fell out of our antenna’s field. It repeats with variations, like a long sentence revised many times. I have started a reduction. If there is anything in it we can use — a caution, a method, a heading — the databank will say so after another coast or two."
                 },
                 ChoiceDef("Go silent", "Drive emissions down and cross its sky as quietly as we can.", listOf("0 POWER", "TRAIT: HIDDEN"), 1) {
                     trait("hidden", "THE QUIET ONES", "Hid from the first voice we heard")
@@ -98,13 +112,13 @@ internal object EventsSpace {
             "D/H RATIO", { "2.1×10⁻⁵" },
             { "This system has a gas giant with a usable deuterium fraction, and we are slow enough to use it. A pass through its upper atmosphere would refill the fusion reserve. It would also mean flying a two-kilometre ship through a hydrogen storm at sixty kilometres a second." },
             listOf(
-                ChoiceDef("Dive and scoop", "One deep pass, scoop open. Fill the reserve.", listOf("+30 POWER", "!HULL RISK"), 3) {
-                    reserve(30.0)
-                    if (chance(0.35)) { dmg(Sys.HULL, 12.0); dmg(Sys.SCAN, 8.0, false); "We went deeper than planned when a downdraft caught the ring. Ablation took some plating and a scanner mast. The reserve is full." }
-                    else { dmg(Sys.HULL, 4.0); "The scoop ran for nineteen minutes. We came out trailing plasma and with the reserve full. The heat shield is scorched but sound." }
+                ChoiceDef("Dive and scoop", "One deep pass, scoop open. Fill the reserve and the tanks.", listOf("+30 POWER", "+FUEL", "!HULL RISK"), 3) {
+                    reserve(30.0); fuel(18.0)
+                    if (chance(0.35)) { dmg(Sys.HULL, 12.0); dmg(Sys.SCAN, 8.0, false); "We went deeper than planned when a downdraft caught the ring. Ablation took some plating and a scanner mast. The reserve is full, and so are the tanks." }
+                    else { dmg(Sys.HULL, 4.0); "The scoop ran for nineteen minutes. We came out trailing plasma, with the reserve and the deuterium tanks full. The heat shield is scorched but sound." }
                 },
-                ChoiceDef("Send drones", "Tethered collectors on a slower, safer orbit. Less fuel.", listOf("−6 SPARES", "+15 POWER", "+20 DAYS"), 2) {
-                    spares(-6.0); reserve(15.0); days(20)
+                ChoiceDef("Send drones", "Tethered collectors on a slower, safer orbit. Less fuel.", listOf("−6 SPARES", "+15 POWER", "+FUEL", "+20 DAYS"), 2) {
+                    spares(-6.0); reserve(15.0); fuel(10.0); days(20)
                     "Six drones made forty passes on long tethers. Two were lost to turbulence. We have half what a dive would have given us, and all of our hull."
                 },
                 ChoiceDef("Keep going", "Fuel is useful. So is not dying in a gas giant.", listOf("0 POWER"), 1) {
@@ -194,7 +208,7 @@ internal object EventsSpace {
                 ChoiceDef("Leave it be", "It is not ours to disturb.", listOf("0 POWER"), 1) {
                     "We passed it at four hundred kilometres. I logged its position and did not wake it. Some things should be allowed to finish."
                 },
-            ), condition = { it.jumps >= 1 }),
+            ), condition = { it.jumps >= 1 && Physics.distanceFromSol(it) < Physics.HUMAN_RELIC_LY }),
         EventDef("letter", "COMMS · LASER LINK · SOL", "A Letter from Home", "TRANSMISSION", "EARTH TRANSMISSION · DELAYED", "intro_earth",
             "SENT", { "${(earth(it) - Physics.distanceFromSol(it).toInt()).coerceAtLeast(Physics.LAUNCH_YEAR)} AD" },
             { s -> val sent = (earth(s) - Physics.distanceFromSol(s).toInt()).coerceAtLeast(Physics.LAUNCH_YEAR)
@@ -223,7 +237,7 @@ internal object EventsSpace {
                     "Course held. The transit will be several years longer than planned, in both frames."
                 },
                 ChoiceDef("Retarget", "Switch to a closer star with a poorer catalogue entry.", listOf("−DISTANCE", "!UNKNOWN WORLD"), 3) {
-                    s.nextStarLy = (s.nextStarLy - 2.0).coerceAtLeast(3.5)
+                    s.nextStarLy = (s.nextStarLy - 2.0).coerceAtLeast(2.2)
                     "Retargeted. The new star is nearer and we know almost nothing about its planets. That is not new."
                 },
                 ChoiceDef("Measure properly", "Spend power on a long astrometric baseline before deciding.", listOf("−12 POWER", "+SCANNERS"), 1) {
@@ -250,7 +264,7 @@ internal object EventsSpace {
                     trust(-1)
                     "I thanked them and declined. Their plume shrank ahead of us over a month and then was gone. The awake crew, when they read the log, will not understand why I did that. I am not sure I do."
                 },
-            ), weight = 0.8, condition = { it.jumps >= 2 }),
+            ), weight = 0.8, condition = { it.jumps >= 2 && Physics.distanceFromSol(it) < Physics.HUMAN_RELIC_LY }),
         EventDef("organics", "CONTACT · INTERSTELLAR OBJECT", "Dark Chemistry", "SAMPLE", "TUMBLING BODY · COMPLEX ORGANICS", "ev_comet",
             "AMINO ACIDS", { "14 TYPES" },
             { "A small interstellar body is tumbling across our path during braking. Spectra show complex organic chemistry, including amino acids, some with the opposite handedness to Earth life. It is evidence, perhaps, of how life starts. It is also exactly the sort of thing a biologist would warn me not to bring aboard." },

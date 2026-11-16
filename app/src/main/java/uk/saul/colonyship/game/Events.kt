@@ -32,6 +32,9 @@ class EventDef(
 
 internal fun asleep(id: String): (GameState) -> Boolean = { id !in it.awake }
 internal fun isAwake(id: String): (GameState) -> Boolean = { id in it.awake }
+internal fun unresolved(id: String): (GameState) -> Boolean = {
+    id in it.awake && it.fateOf(id)?.status !in setOf("DEAD", "MISSING", "SETTLED")
+}
 internal fun earth(s: GameState) = Physics.earthYear(s)
 internal fun ly(s: GameState) = "%.1f".format(Physics.distanceFromSol(s))
 
@@ -40,7 +43,7 @@ internal fun ly(s: GameState) = "%.1f".format(Physics.distanceFromSol(s))
  * Hard science fiction: the physics, biology and engineering are meant to hold up, and choices have consequences.
  */
 object Events {
-    val all: List<EventDef> = EventsSpace.list + EventsShip.list + EventsCrew.list
+    val all: List<EventDef> = EventsSpace.list + EventsShip.list + EventsCrew.list + EventsDeep.list + EventsCrisis.list + EventsInsight.list
 
     fun byId(id: String) = all.firstOrNull { it.id == id }
 
@@ -48,8 +51,18 @@ object Events {
         val recent = s.seenEvents.takeLast(14).toSet()
         val pool = all.filter { it.condition(s) && it.id !in recent && it.available(s).size >= 2 }
             .ifEmpty { all.filter { it.condition(s) && it.available(s).size >= 2 } }
-        var x = r.nextDouble() * pool.sumOf { it.weight }
-        for (e in pool) { x -= e.weight; if (x <= 0) return e }
-        return pool.last()
+        fun w(e: EventDef): Double {
+            if (!e.id.startsWith("crisis_")) return e.weight
+            val wear = Sys.entries.minOf { s.h(it) }
+            val worn = if (wear < 40) 0.5 else if (wear < 60) 0.25 else 0.0
+            return e.weight * (0.7 + 0.18 * (s.jumps - 4).coerceAtLeast(0) + worn)
+        }
+        var x = r.nextDouble() * pool.sumOf { w(it) }
+        var ev = pool.last()
+        for (e in pool) { x -= w(e); if (x <= 0) { ev = e; break } }
+        if (ev.id.startsWith("crisis_") && s.hasTrait("warning-honoured")) {
+            ev = byId("warning_pays") ?: ev
+        }
+        return ev
     }
 }

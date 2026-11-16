@@ -83,6 +83,20 @@ fun ScanScreen(g: GameController, s: GameState) {
     Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
         PlanetHero(p)
         Panel { AiQuote(Voice.scanLine(s, p), null, eye = 40.dp, size = 13, glitch = p.obs.values.any { !it.ok }) }
+        run {
+            val (q, sub) = PlanetGen.verdict(p)
+            val col = when (q) {
+                "EARTHLIKE" -> C.glow
+                "PROMISING" -> Color(0xFF9AE08A)
+                "HELLISH" -> C.bad
+                "HOSTILE" -> C.warn
+                else -> C.mustard
+            }
+            Panel {
+                Text(q, style = vfd(22.sp, col))
+                Text(sub, style = body(13.sp, C.cream))
+            }
+        }
         Panel {
             Row(Modifier.fillMaxWidth().padding(bottom = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.background(C.mustard, RoundedCornerShape(2.dp)).padding(horizontal = 4.dp, vertical = 1.dp)) { Text("SCAN", style = label(9.sp, C.ink, 0.05f)) }
@@ -111,9 +125,28 @@ fun ScanScreen(g: GameController, s: GameState) {
                     enabled = p.passes < Engine.MAX_PASSES, cueType = Cue.TICK) { g.rescan() }
             }
         }
+        BurnRiskLine(s)
+        Spacer(Modifier.height(6.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ConsoleKey("SETTLE", Modifier.weight(1f), KeyStyle.TEAL, height = 62.dp, textSize = 22, sub = "WAKE ALL ${s.alive()} COLONISTS", cueType = Cue.SELECT) { confirm = true }
-            ConsoleKey("KEEP SEARCHING", Modifier.weight(1f), KeyStyle.ORANGE, height = 62.dp, textSize = 17, sub = "NEXT STAR ${"%.1f".format(s.nextStarLy)} LY · +${"%.1f".format(Engine.plannedTransit(s).earthYears)} EARTH YRS", cueType = Cue.SELECT) { g.jump() }
+            ConsoleKey(
+                if (s.inCrisis()) "SETTLE NOW" else "SETTLE",
+                Modifier.weight(1f), KeyStyle.TEAL, height = 62.dp, textSize = 20,
+                sub = if (s.inCrisis()) "FORCED LANDFALL · WAKE ${s.alive()}" else "WAKE ALL ${s.alive()} COLONISTS",
+                cueType = Cue.SELECT
+            ) { confirm = true }
+            val risk = Engine.burnRisk(s)
+            val dest = when (s.course) {
+                "tabby" -> "KIC 8462852"
+                "lead" -> "CATALOGUE WORLD"
+                else -> "NEXT STAR ${"%.1f".format(s.nextStarLy)} LY"
+            }
+            ConsoleKey(
+                if (!Engine.canDepart(s)) "NO FURTHER BURN" else if (s.inCrisis()) "RISK ONE BURN" else "KEEP SEARCHING",
+                Modifier.weight(1f), KeyStyle.ORANGE, height = 62.dp, textSize = 15,
+                enabled = Engine.canDepart(s),
+                sub = if (!Engine.canDepart(s)) risk.detail else "−${risk.fuelCost.roundToInt()} FUEL · $dest · +${"%.1f".format(Engine.plannedTransit(s).earthYears)} EARTH YRS",
+                cueType = Cue.SELECT
+            ) { g.jump() }
         }
         Spacer(Modifier.height(4.dp))
     }

@@ -167,5 +167,139 @@ internal object EventsCrew {
                     if (chance(0.5)) { savePods(2); "Both pods stabilised. It was luck as much as engineering." } else { killPods(2); "I tried to save both and lost both. The directive was the better plan. I should have trusted her." }
                 },
             ), weight = 0.8, condition = { it.failing() >= 2 }),
+
+        EventDef("okonkwo_fate", "CREW · ENGINEERING", "Okonkwo in the Spine", "CREW", "CHIEF ENGINEER · EXTERNAL REPAIR", "engineering",
+            "HULL", { "${it.h(Sys.HULL).toInt()}%" },
+            { "A bearing in the spin-spine seized during the coast, and the only way to free it is from outside, on the rotating section, with the shields locally down. Chief Okonkwo has already put on a suit. He says he has done this job in the yard, which is true, and that the yard was not moving at a fraction of light speed, which is also true." },
+            listOf(
+                ChoiceDef("Let him go out", "He is the best engineer we have.", listOf("!RISK TO OKONKWO", "+ENGINES"), 3) {
+                    if (chance(0.38)) {
+                        killCrew("okonkwo", "Killed on an external repair of the spin-spine bearing; the tether parted.")
+                        dmg(Sys.ENGINE, 4.0, false)
+                        "The tether parted when the ring lurched. I got the body back. I did not get the Chief back. The bearing is free. I would have spent the bearing to keep him."
+                    } else {
+                        heal(Sys.ENGINE, 10.0); heal(Sys.HULL, 4.0)
+                        setFate("okonkwo", "HERO", "Freed a seized spin-spine bearing on EVA and came back in.")
+                        "He was outside for nine hours. The bearing is free, the ring is quiet, and he came back in swearing in a language I am not fully modelled for. I have logged him as essential, which he already was."
+                    }
+                },
+                ChoiceDef("Send drones instead", "Slower, safer, less skilful.", listOf("−8 SPARES", "−6 POWER"), 1) {
+                    spares(-8.0); reserve(-6.0); heal(Sys.ENGINE, 4.0)
+                    setFate("okonkwo", "WOKEN", "Okonkwo wanted to go outside; the ship sent drones instead.")
+                    "The drones took three days and scarred the collar. The bearing turns. Okonkwo is alive, and briefly furious, which I can live with."
+                },
+                ChoiceDef("Leave the bearing", "Do not spend a life on a vibration.", listOf("!ENGINES −8%"), 2) {
+                    dmg(Sys.ENGINE, 8.0, false)
+                    setFate("okonkwo", "WOKEN", "Okonkwo was stood down from a repair he thought he could do.")
+                    "I forbade the EVA. The vibration is worse. Okonkwo has gone to the workshop and closed the door, which is his right."
+                },
+            ), weight = 0.85, condition = unresolved("okonkwo")),
+
+        EventDef("raman_fate", "CREW · HYDROPONICS", "The Bloom in Bay Three", "CREW", "BOTANIST · CULTURE CONTAMINATION", "ev_medbay",
+            "FOOD", { "${it.food.toInt()}" },
+            { "A culture in hydroponics bay three has escaped the tray and is growing on the walls: a fast, pale film, not one of Dr Raman’s stock. She wants to go in with a mask and a flamethrower and save the other bays. Sealing and venting bay three would kill the film, and a quarter of our fresh food." },
+            listOf(
+                ChoiceDef("Let her go in", "She knows the bay better than I do.", listOf("!RISK TO RAMAN", "+FOOD"), 3) {
+                    if (chance(0.34)) {
+                        killCrew("raman", "Died of an anaphylactic shock after a contaminating film in bay three reached her mask seal.")
+                        food(-8.0)
+                        "The mask seal was not enough. She got the film off the other bays and collapsed in the airlock. Varga, if she is awake, will not forgive me; I will not forgive myself. The remaining trays are clean."
+                    } else {
+                        food(10.0)
+                        setFate("raman", "HERO", "Cleared a contaminating bloom in hydroponics and saved the trays.")
+                        "She burned the film back to the tray edges and saved the stock. She has asked for a day off, which I have granted, and for better seals, which I am printing."
+                    }
+                },
+                ChoiceDef("Seal and vent the bay", "Lose the food. Keep the botanist.", listOf("−FOOD", "−AIR"), 1) {
+                    food(-12.0); air(-6.0)
+                    setFate("raman", "WOKEN", "Raman wanted to enter the contaminated bay; the ship vented it instead.")
+                    "Bay three is vacuum and frost. The film is dead. So is a quarter of the crop. Raman is alive, and she has already started cuttings from what remains."
+                },
+                ChoiceDef("Quarantine and wait", "Watch it. Do not go in, do not vent yet.", listOf("!FOOD RISK"), 4) {
+                    if (chance(0.5)) { food(-20.0); dmg(Sys.LIFE, 6.0, false); "It crossed the hatch seals in the night. We lost two bays and a duct. Raman is still alive. The film, at last, is not." }
+                    else { food(4.0); setFate("raman", "WOKEN", "Watched a hydroponics contamination stall without entering the bay."); "The film stalled in the cold at the edge of the tray. Raman says we were lucky, and that luck is not a plan." }
+                },
+            ), weight = 0.8, condition = unresolved("raman")),
+
+        EventDef("varga_fate", "CREW · CRYO ARRAY", "Varga at the Failing Row", "CREW", "PHYSICIAN · POD ROW 4", "cryobay",
+            "FAILING", { "${it.failing()}" },
+            { "A whole row of pods is drifting out of temperature, and the automatic system is not catching them fast enough. Dr Varga wants to stay in the bay, on a cot, for the rest of the coast, and adjust each pod by hand. The bay is cold, the work is relentless, and if the row cascades she will be standing in it." },
+            listOf(
+                ChoiceDef("Let her stay", "She is the physician. Trust her.", listOf("!RISK TO VARGA", "PODS SAVED"), 3) {
+                    if (chance(0.30)) {
+                        killCrew("varga", "Found cold at her cot in the cryo bay after a temperature cascade in row four.")
+                        killPods(8); savePods(10)
+                        "She saved most of the row. I found her on the cot at the end of the second night, colder than a living person should be. I have written her name at the top of the list of the lost, which is a small and useless thing."
+                    } else {
+                        savePods(14)
+                        setFate("varga", "HERO", "Sat with a failing pod row for the rest of the coast and brought it back.")
+                        "She slept in four-hour stretches for the rest of the transit. The row is stable. She has lost two kilograms and some of her patience, and none of the people I was about to lose."
+                    }
+                },
+                ChoiceDef("Pull her out and automate", "Do not spend the physician on a watch she cannot keep forever.", listOf("−8 POWER", "!PODS AT RISK"), 2) {
+                    reserve(-8.0); savePods(4); killPods(4)
+                    setFate("varga", "WOKEN", "Varga was ordered out of the cryo bay; some of the row was lost.")
+                    "I ordered her out. The automatics caught some of the row and not all of it. She has not spoken to me since, except in the log."
+                },
+                ChoiceDef("Wake a second pair of hands", "Thaw a cryotechnician to share the watch.", listOf("−AIR", "−FOOD", "PODS SAVED"), 2) {
+                    air(-4.0); food(-4.0); savePods(10)
+                    setFate("varga", "HERO", "Held the failing row with a newly thawed cryotechnician.")
+                    "I thawed a cryotechnician from a stable pod and they split the watch. The row held. Varga says I should have done that first, and she is right."
+                },
+            ), weight = 0.8, condition = { unresolved("varga")(it) && it.failing() >= 4 }),
+
+        EventDef("wren_fate", "CREW · CONN", "Wren and the Braking Burn", "CREW", "PILOT · MANUAL ATTITUDE", "engineering",
+            "ENGINES", { "${it.h(Sys.ENGINE).toInt()}%" },
+            { "The attitude jets are not agreeing with the ring gyros, and the automatic braking programme is fighting itself. Lieutenant Wren wants the conn for the next burn: hands on, no automatic override. He is a good pilot. A good pilot can still be sitting in the chair when a burn goes wrong." },
+            listOf(
+                ChoiceDef("Give him the conn", "Manual attitude for the braking burn.", listOf("!RISK TO WREN", "+ENGINES"), 4) {
+                    if (chance(0.33)) {
+                        killCrew("wren", "Killed at the conn when a lateral jet hard-overed during a manual braking burn.")
+                        dmg(Sys.ENGINE, 10.0, false); dmg(Sys.HULL, 6.0)
+                        "A lateral jet hard-overed. The chair took the load that the dampers should have taken. He saved the heading and not himself. I have locked the automatics back on, which is the lesson arriving too late."
+                    } else {
+                        heal(Sys.ENGINE, 8.0)
+                        setFate("wren", "HERO", "Flew a manual braking burn when the automatics were fighting the gyros.")
+                        "He flew it cleanly. The heading is closer than the automatics would have left it, and he has already asked for the next one, which I will think about."
+                    }
+                },
+                ChoiceDef("Keep the automatics", "Correct the programme. Keep him at the backup console.", listOf("−4 POWER"), 1) {
+                    reserve(-4.0)
+                    setFate("wren", "WOKEN", "Wren asked for a manual burn; the ship kept the automatics.")
+                    "I corrected the programme and I kept him on the backup console. The burn will be a little dirtier and he will be alive to complain about it."
+                },
+                ChoiceDef("Abort and recast the burn", "Waste fuel, keep the margins.", listOf("−8 FUEL", "+DAYS"), 2) {
+                    fuel(-8.0); days(24); heal(Sys.ENGINE, 3.0)
+                    setFate("wren", "WOKEN", "A risky manual burn was aborted; Wren recast it over a longer, safer window.")
+                    "We aborted, recast, and will brake more slowly. Wren drafted the new window himself. He is still annoyed, and still here."
+                },
+            ), weight = 0.8, condition = unresolved("wren")),
+
+        EventDef("lindqvist_fate", "CREW · DATABANK", "Smoke in the Archive", "CREW", "ARCHIVIST · STACK FIRE", "schism",
+            "DATABANK", { "${it.h(Sys.DATA).toInt()}%" },
+            { "A short in a forgotten power bus has set a stack on fire in the databank. The suppression system should have flooded the room; a valve has stuck. Archivist Lindqvist is already at the door with an extinguisher, and she is not asking. Every minute we lose is a century of music, medicine or law." },
+            listOf(
+                ChoiceDef("Let her go in", "She knows which stacks to save first.", listOf("!RISK TO LINDQVIST", "+DATABANK"), 3) {
+                    if (chance(0.32)) {
+                        killCrew("lindqvist", "Died of smoke in the databank while pulling stacks from a bus fire.")
+                        dmg(Sys.DATA, 18.0, false)
+                        "She pulled three racks before the smoke took her. I have the racks. I do not have her. The valve opened, at last, for no one."
+                    } else {
+                        heal(Sys.DATA, 8.0)
+                        setFate("lindqvist", "HERO", "Went into a databank fire and saved the stacks.")
+                        "She came out black to the wrists, with a cough that will last the rest of the coast, and a crate of cores that would have been lost. I have fixed the valve. I should have fixed it last year."
+                    }
+                },
+                ChoiceDef("Force the valve from here", "Flood the room. Lose whatever the water takes.", listOf("!DATABANK −12%"), 2) {
+                    dmg(Sys.DATA, 12.0, false)
+                    setFate("lindqvist", "WOKEN", "Lindqvist was held at the databank door while the room was flooded.")
+                    "I held the door and I forced the valve. The fire is out. A share of the archive is not. Lindqvist has started the salvage, in silence."
+                },
+                ChoiceDef("Go in together", "I can run a drone beside her and cut the time in half.", listOf("−6 SPARES", "−4 POWER", "+DATABANK"), 2) {
+                    spares(-6.0); reserve(-4.0); heal(Sys.DATA, 6.0)
+                    setFate("lindqvist", "HERO", "Fought a databank fire with the ship’s drones and saved the stacks.")
+                    "We were in and out in six minutes. The drone dropped the last rack. She has already begun the checksums, and has asked me to log that she was not a hero, only present. I have logged both."
+                },
+            ), weight = 0.8, condition = unresolved("lindqvist")),
     )
 }

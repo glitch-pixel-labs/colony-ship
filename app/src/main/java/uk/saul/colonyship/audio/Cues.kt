@@ -12,7 +12,7 @@ import android.view.HapticFeedbackConstants
 import android.view.View
 import uk.saul.colonyship.R
 
-enum class Cue { TICK, BUTTON, SELECT, IMPACT, ALARM, POD_LOSS, JUMP, SCAN, SETTLE }
+enum class Cue { TICK, BUTTON, SELECT, IMPACT, ALARM, CRISIS, POD_LOSS, JUMP, SCAN, SETTLE }
 
 /**
  * Sound effects, ambient music and haptics in one place, with graceful fallbacks.
@@ -46,7 +46,7 @@ class Cues(private val ctx: Context) {
     init {
         pool?.let { p ->
             val map = mapOf(Cue.TICK to R.raw.sfx_click, Cue.BUTTON to R.raw.sfx_click, Cue.SELECT to R.raw.sfx_select, Cue.IMPACT to R.raw.sfx_impact,
-                Cue.ALARM to R.raw.sfx_alarm, Cue.POD_LOSS to R.raw.sfx_podloss, Cue.JUMP to R.raw.sfx_jump, Cue.SCAN to R.raw.sfx_scan, Cue.SETTLE to R.raw.sfx_settle)
+                Cue.ALARM to R.raw.sfx_alarm, Cue.CRISIS to R.raw.sfx_alarm, Cue.POD_LOSS to R.raw.sfx_podloss, Cue.JUMP to R.raw.sfx_jump, Cue.SCAN to R.raw.sfx_scan, Cue.SETTLE to R.raw.sfx_settle)
             map.forEach { (c, r) -> try { ids[c] = p.load(ctx, r, 1) } catch (_: Exception) {} }
         }
     }
@@ -103,6 +103,7 @@ internal fun hapticEffect(c: Cue, amplitudeControl: Boolean): VibrationEffect = 
     Cue.SCAN -> hapticWave(longArrayOf(0, 20, 60, 20, 60, 20), intArrayOf(0, 90, 0, 120, 0, 160), amplitudeControl)
     Cue.IMPACT -> hapticWave(longArrayOf(0, 90, 40, 140, 50, 60), intArrayOf(0, 255, 0, 200, 0, 120), amplitudeControl)
     Cue.ALARM -> hapticWave(longArrayOf(0, 180, 120, 180, 120, 180), intArrayOf(0, 220, 0, 220, 0, 220), amplitudeControl)
+    Cue.CRISIS -> hapticWave(longArrayOf(0, 90, 50, 220, 70, 90, 50, 260, 80, 200, 60, 240), intArrayOf(0, 255, 0, 255, 0, 200, 0, 255, 0, 220, 0, 255), amplitudeControl)
     Cue.POD_LOSS -> hapticWave(longArrayOf(0, 60, 200, 260), intArrayOf(0, 200, 0, 90), amplitudeControl)
     Cue.JUMP -> hapticWave(longArrayOf(0, 200, 200, 300, 400, 300, 200), intArrayOf(0, 40, 80, 140, 255, 140, 50), amplitudeControl)
     Cue.SETTLE -> hapticWave(longArrayOf(0, 60, 120, 60, 120, 60, 160, 500), intArrayOf(0, 120, 0, 160, 0, 200, 0, 255), amplitudeControl)
